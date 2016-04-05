@@ -59,7 +59,8 @@ def aStar(start,goal):
 	closedset = []    # The set of nodes already evaluated.
     openset = [start]            # The set of tentative nodes to be evaluated, initially containing the start node.  The nodes in this set are the nodes that make the frontier between the closed 
 	                             # set and all other nodes.
-    came_from = the empty map    # The map of navigated nodes.
+    came_from = [][]    # The map of navigated nodes.
+    came_from[start[0], start[1]] = null
 	
 	# The g_score of a node is the distance of the shortest path from the start to the node.
 	# Start by assuming that all nodes that have yet to be processed cannot be reached 
@@ -95,19 +96,20 @@ def aStar(start,goal):
         openset.remove(current)                  # mark this node as having been evaluated
         closedset.append(current) 
 
-        for each neighbor in neighbor_nodes(current) # re-evaluate each neighboring node
-            if neighbor in closedset
+        neighbors = neighbor_nodes(current)
+        for i in range(len(neighbors)): 				# re-evaluate each neighboring node
+            if neighbors[i] in closedset:
                 continue
-            tentative_g_score = g_score[current] + dist_between(current,neighbor) # create a new g_score for the current neighbor by adding the g_score from the current node and
-			                                                                      # the distance to the neighbor
+            tentative_g_score = g_score[current[0]][current[1]] + dist_between(current,neighbor)	# create a new g_score for the current neighbor by adding the g_score from the current node and
+			                                                                      					# the distance to the neighbor
  
-            if neighbor not in openset or tentative_g_score < g_score[neighbor]                 # if the neighbor has not been evaluated yet, or if a better path to the neighbor has been found,
-				                                                                                # update the neighbor
-                came_from[neighbor] = current                                                   # The node to reach this node from in the best time is the current node
-                g_score[neighbor] = tentative_g_score                                           # The G score of the node is what we tentatively calculated earlier
-                f_score[neighbor] = g_score[neighbor] + heuristic_cost_estimate(neighbor, goal) # The F score is the G score and the heuristic
-                if neighbor not in openset                                                      # add this neighbor to the frontier if it was not in it already
-                    add neighbor to openset
+            if neighbors[i] not in openset or tentative_g_score < g_score[neighbors[i][0]][neighbors[i][1]]:                # if the neighbor has not been evaluated yet, or if a better path to the neighbor has been found,
+				                                                                                							# update the neighbor
+                came_from[neighbors[i][0]][nieghbors[i][1]] = current                                                   							# The node to reach this node from in the best time is the current node
+                g_score[neighbors[i][0]][neighbors[i][1]] = tentative_g_score                                           							# The G score of the node is what we tentatively calculated earlier
+                f_score[neighbors[i][0]][neighbors[i][1]] = g_score[neighbors[i][0]][neighbors[i][1]] + heuristic_cost_estimate(neighbors[i], goal) 							# The F score is the G score and the heuristic
+                if neighbors[i] not in openset:                                                      							# add this neighbor to the frontier if it was not in it already
+                    openset.append(neighbors[i])
 
     print "There is not a possible path"
     return failure #if the program runs out of nodes to check before it finds the goal, then a solution does not exist
@@ -130,10 +132,10 @@ def reconstruct_path(came_from,current):
     total_path = [current]
 	
 	# run while reconstruct_path hasn't reached the start
-    while (current in came_from):
+    while (came_from[current[0]][current[1]] not null):
 		
 		# The current node is now the node that leads to the previous node
-        current = came_from[current]
+        current = came_from[current[0]][current[1]]
 		
 		# add the current node to the front of the list
         total_path.append(current)
