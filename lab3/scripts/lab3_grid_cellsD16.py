@@ -72,14 +72,13 @@ def aStar(start,goal):
 
 	i = 0
 	while queue:
-		showCells(visited, 5)
+		#showCells(visited, 5)
 
 		node, cost, path = queue.pop(0)
 
 		if node == goal:
 			print 'Found path: ', path
 			print 'cost: ', cost
-
 			showCells(path, 2)		# Displays Path
 			showCells([],5)
 			rospy.sleep(1)
@@ -134,18 +133,33 @@ def aStar(start,goal):
 
 
 def wayPoints(path):
-	points = list()
-	for i in range(len(path)-1):
-		current = math.atan2(path[i][1] - path[(i+1)][1], path[i][0] - path[(i+1)][0]) #find the angle between the current and next points
-		if (i != 0) and (current != last): #if the angle has changed
-			points.append(path[i]) #add the point to the list of waypoints
-		last = current
-	return points
+    points = list()
+    for i in range(len(path)-1):
+        current = math.atan2(path[i][1] - path[(i+1)][1], path[i][0] - path[(i+1)][0]) #find the angle between the current and next points
+        if (i != 0) and (current != last): #if the angle has changed
+            points.append(path[i]) #add the point to the list of waypoints
+        last = current
+    return points
+
+def reconstruct_path(came_from,current):
+
+	# start by adding goal to the path
+    total_path = [current]
+	
+	# run while reconstruct_path hasn't reached the start
+    while (came_from[current[0]][current[1]] is not None):
+		
+		# The current node is now the node that leads to the previous node
+        current = came_from[current[0]][current[1]]
+		
+		# add the current node to the front of the list
+        total_path.append(current)
+		
+	# The list is now the shortest path from the start to the end
+    return total_path
 
 
-
-
-def publishCells(grid):
+def publishCells(grid, num):
     global pub
     print "publishing"
 
@@ -199,7 +213,6 @@ def showCells(list, num):
 	if num == 5:
 		pubexplore.publish(cells)
 
-
 def showCellsVisited(list, visited):
 	grid = []
 	for i in range(width + 1):
@@ -210,6 +223,8 @@ def showCellsVisited(list, visited):
 	for i in range(len(list)):
 		grid[(width+1)*list[i][0] + list[i][1]] = 100
 	publishCells(grid, 3)
+
+
 
 
 #Main handler of the project
@@ -239,10 +254,8 @@ def run():
     goal = [180, 180]
     print start
     print goal
-    publishCells(mapData)
     showCells([start, goal], 4)
     aStar(start, goal)
-    
     
 
 
