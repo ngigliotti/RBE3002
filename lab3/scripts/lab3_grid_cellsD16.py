@@ -59,7 +59,7 @@ def aStar(start,goal):
 
 	def isWall(point):
 		value = mapData[point[1] * (width) + point[0]]
-		if value == 100:
+		if value >= 98:
 			return True	
 		return False		#Else
 
@@ -92,13 +92,6 @@ def aStar(start,goal):
 			print 'encountered a wall. Darn'
 			continue
 
-		#if i == 32:
-		#	i = 0
-		#	showCellsVisited(path, visited)
-		#else:
-		#	i += 1
-
-
 		# Expand neighboring nodes in the list
 		for d in direction:
 			next_node = [node[0] + d[0], node[1] + d[1]]
@@ -107,8 +100,10 @@ def aStar(start,goal):
 				continue
 
 			# Check if wall here
-
-			next_cost = len(path) + 1 + h(next_node, goal)
+			if (d[0]**2 + d[1]**2 > 1):		# If Diagnol Direction
+				next_cost = len(path) + 5 + h(next_node, goal)
+			else:
+				next_cost = len(path) + 1 + h(next_node, goal)
 
 			i = 0
 			while i < len(queue):
@@ -237,7 +232,7 @@ def run():
     global startPosX
     global startPosY
     rospy.init_node('lab3')
-    sub = rospy.Subscriber("/map", OccupancyGrid, mapCallBack)
+    sub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, mapCallBack)
     pub = rospy.Publisher("/map_check", GridCells, queue_size=1)
     pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)  
     pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
@@ -250,7 +245,7 @@ def run():
     # wait a second for publisher, subscribers, and TF
     rospy.sleep(1)
     
-    start = [5,5]
+    start = [30, 30]
     goal = [180, 180]
     print start
     print goal

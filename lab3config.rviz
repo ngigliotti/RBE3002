@@ -12,6 +12,7 @@ Panels:
         - /GridCells2
         - /GridCells3
         - /GridCells4
+        - /GridCells5
       Splitter Ratio: 0.5
     Tree Height: 1272
   - Class: rviz/Selection
@@ -81,10 +82,10 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz/GridCells
       Color: 170; 0; 0
-      Enabled: true
+      Enabled: false
       Name: GridCells
       Topic: /map_check
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/GridCells
       Color: 0; 0; 255
@@ -105,6 +106,13 @@ Visualization Manager:
       Enabled: true
       Name: GridCells
       Topic: /points
+      Value: true
+    - Alpha: 1
+      Class: rviz/GridCells
+      Color: 25; 255; 0
+      Enabled: true
+      Name: GridCells
+      Topic: /explore
       Value: true
   Enabled: true
   Global Options:
@@ -130,16 +138,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 23.6125
+      Distance: 21.3533
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 2.33729
-        Y: 0.187896
-        Z: -2.433
+        X: 4.43723
+        Y: 2.84016
+        Z: -5.51897
       Name: Current View
       Near Clip Distance: 0.01
       Pitch: 0.830397
@@ -163,5 +171,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1411
-  X: 1468
-  Y: 52
+  X: 47
+  Y: 14
