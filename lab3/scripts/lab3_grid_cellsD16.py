@@ -59,9 +59,10 @@ def aStar(start,goal):
 
 	def isWall(point):
 		value = mapData[point[1] * (width) + point[0]]
-		if value >= 98:
+		if value >= 40:
 			return True	
 		return False		#Else
+        print "Found A Wall"
 
 	visited = []    				# The set of nodes already evaluated.
 	queue = [(start, 0, [])]		# The set of tentative nodes to be evaluated, initially containing the start node.
@@ -195,7 +196,7 @@ def showCells(list, num):
 		point.y=(list[i][1]*resolution)+offsetY - (.5 * resolution) # added secondary offset ... Magic ?
 		point.z=0
 		cells.cells.append(point)
-		print point
+		#print point
 
 	if num == 1:
 		pub.publish(cells)
