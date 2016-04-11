@@ -144,25 +144,22 @@ def rotate(speed, angle):
 
 
 
-# reads in global map
-def mapCallBack(data):
-    global mapData
-    global width
-    global height
-    global mapgrid
-    global resolution
-    global offsetX
-    global offsetY
-    mapgrid = data
-    resolution = data.info.resolution
-    mapData = data.data
-    width = data.info.width
-    height = data.info.height
-    offsetX = data.info.origin.position.x
-    offsetY = data.info.origin.position.y
-    print '<Map Data>'
+# reads in local map
+def localMapCallBack(data):
+    global localMap
+    localMap = data
+    print '<Local Map Data>'
     print data.info
-    print '<Map Data End>'
+    print '<Local Map Data End>'
+
+
+# reads in global map
+def globalMapCallBack(data):
+	global globalMap
+	globalMap = data
+	print '<Global Map Data>'
+	print data.info
+	print '<Global Map Data End>'
 
 
 
@@ -192,24 +189,42 @@ def tCallback(event):
 
 
 def readGoal(goal):
-    global goalX
-    global goalY
-    global desiredT
-    goalX = goal.pose.position.x
-    goalY = goal.pose.position.y
-    quat = goal.pose.orientation
-    q = [quat.x, quat.y, quat.z, quat.w]
-    roll, pitch, yaw = euler_from_quaternion(q)
-    desiredT = yaw * (180/math.pi)
+	global goalX
+	global goalY
+	global desiredT
+	global mapData
+	global width
+	global height
+	global mapgrid
+	global resolution
+	global offsetX
+	global offsetY
+	global globalMap
 
-    goalX = int((goalX - 0.5*resolution - offsetX)/resolution)
-    goalY = int((goalY - 0.5*resolution - offsetX)/resolution)
-    #print goal.pose
-    try:
-    	run()
+	data = globalMap
+	mapgrid = data
+	resolution = data.info.resolution
+	mapData = data.data
+	width = data.info.width
+	height = data.info.height
+	offsetX = data.info.origin.position.x
+	offsetY = data.info.origin.position.y
+
+	goalX = goal.pose.position.x
+	goalY = goal.pose.position.y
+	quat = goal.pose.orientation
+	q = [quat.x, quat.y, quat.z, quat.w]
+	roll, pitch, yaw = euler_from_quaternion(q)
+	desiredT = yaw * (180/math.pi)
+
+	goalX = int((goalX - 0.5*resolution - offsetX)/resolution)
+	goalY = int((goalY - 0.5*resolution - offsetX)/resolution)
+	#print goal.pose
+	try:
+		run()
         
-    except rospy.ROSInterruptException:
-    	pass
+	except rospy.ROSInterruptException:
+		pass
 
 
 
@@ -224,9 +239,24 @@ def readStart(startPos):
 
 
 
-def aStar(start,goal):
+def aStar(start,goal, data):
 	global cost
 	global path
+	global mapData
+	global width
+	global height
+	global mapgrid
+	global resolution
+	global offsetX
+	global offsetY
+	mapgrid = data
+	resolution = data.info.resolution
+	mapData = data.data
+	width = data.info.width
+	height = data.info.height
+	offsetX = data.info.origin.position.x
+	offsetY = data.info.origin.position.y
+
 	print 'Staring AStar'
 	#print 'Start X: %d' % start[0]
 	#print 'Start Y: %d' % start[1]
@@ -350,8 +380,10 @@ def moveWithAStar(start, goal):
     global offsetY
     global desiredT
     global cost
+    global globalMap
+    global localMap
 
-    aStar(start, goal)
+    aStar(start, goal, globalMap)
     way = wayPoints(path)
 
     while len(way) > 1 and len(path) > 3:
@@ -364,7 +396,7 @@ def moveWithAStar(start, goal):
         xPosition = int((xPosition - 0.5*resolution - offsetX)/resolution)
         yPosition = int((yPosition + 0.5*resolution - offsetY)/resolution)
         start = [xPosition, yPosition]
-        aStar(start, goal)
+        aStar(start, goal, globalMap)
         if cost > 1:
         	way = wayPoints(path)
     goalX = (goal[0]*resolution)+offsetX + (.5 * resolution)
@@ -463,8 +495,8 @@ if __name__ == '__main__':
 
     pose = Pose()
     pubmotion = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, None, queue_size=10) # Publisher for commanding robot motion
-    globalsub = rospy.Subscriber("/move_base/global_costmap/global_costmap", OccupancyGrid, mapCallBack)
-    localsub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, mapCallBack)
+    globalsub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, globalMapCallBack)
+    localsub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, localMapCallBack)
     pub = rospy.Publisher("/map_check", GridCells, queue_size=1)
     pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)  
     pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
