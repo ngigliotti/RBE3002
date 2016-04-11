@@ -238,6 +238,7 @@ def aStar(start,goal):
 		if value >= 99:
 			return True	
 		return False		#Else
+        print "Found A Wall"
 
     visited = []    				# The set of nodes already evaluated.
     queue = [(start, 0, [])]		# The set of tentative nodes to be evaluated, initially containing the start node.
