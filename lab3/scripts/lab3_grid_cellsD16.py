@@ -193,9 +193,13 @@ def tCallback(event):
 def readGoal(goal):
     global goalX
     global goalY
+    global desiredT
     goalX = goal.pose.position.x
     goalY = goal.pose.position.y
-    goal
+    quat = goal.pose.orientation
+    q = [quat.x, quat.y, quat.z, quat.w]
+    roll, pitch, yaw = euler_from_quaternion(q)
+    desiredT = yaw * (180/math.pi)
 
     goalX = int((goalX - 0.5*resolution - offsetX)/resolution)
     goalY = int((goalY - 0.5*resolution - offsetX)/resolution)
@@ -235,10 +239,10 @@ def aStar(start,goal):
 
     def isWall(point):
 		value = mapData[point[1] * (width) + point[0]]
-		if value >= 99:
+		if value >= 96:
 			return True	
 		return False		#Else
-        print "Found A Wall"
+		print "Found A Wall"
 
     visited = []    				# The set of nodes already evaluated.
     queue = [(start, 0, [])]		# The set of tentative nodes to be evaluated, initially containing the start node.
@@ -341,11 +345,12 @@ def moveWithAStar(start, goal):
     global resolution
     global offsetX
     global offsetY
+    global desiredT
 
     aStar(start, goal)
     way = wayPoints(path)
 
-    while len(way) > 1 and len(path) > 2:
+    while len(way) > 1 and len(path) > 3:
         wayX = (way[0][0]*resolution)+offsetX + (.5 * resolution)
         wayY = (way[0][1]*resolution)+offsetY - (.5 * resolution)
         print 'Go to Waypoint'
@@ -357,7 +362,11 @@ def moveWithAStar(start, goal):
         start = [xPosition, yPosition]
         aStar(start, goal)
         way = wayPoints(path)
-
+    goalX = (goal[0]*resolution)+offsetX + (.5 * resolution)
+    goalY = (goal[1]*resolution)+offsetY - (.5 * resolution)
+    print [goalX, goalY]
+    navToPose(goalX, goalY)
+    rotate(.25, desiredT)
     print 'Arrived at Goal'
 
 
