@@ -72,9 +72,8 @@ def driveSmooth(speed, distance):
     	
     	#Accelerate until reaching specified speed
     	while (not atSpeed):
-    		if (currentDistance >= distance):
-    			atTarget = True
-    			publishTwist(0, 0)
+    		if (currentDistance*3 >= distance):
+    			atSpeed = True
     		else:
     			if (ramp >= speed):
     				atSpeed = True
@@ -161,7 +160,9 @@ def mapCallBack(data):
     height = data.info.height
     offsetX = data.info.origin.position.x
     offsetY = data.info.origin.position.y
-    #print data.info
+    print '<Map Data>'
+    print data.info
+    print '<Map Data End>'
 
 
 
@@ -224,94 +225,96 @@ def readStart(startPos):
 
 
 def aStar(start,goal):
-    global path
-    print 'Staring AStar'
+	global cost
+	global path
+	print 'Staring AStar'
 	#print 'Start X: %d' % start[0]
 	#print 'Start Y: %d' % start[1]
 	#print 'Goal X: %d' % goal[0]
 	#print 'Goal Y: %d' % goal[1]
 
 	# Estimates the distance to the goal
-    def h(point, goal):
+	def h(point, goal):
 		# Manhattan distance with diagonal movement
 		#return max(abs(goal[0] - point[0]), abs(goal[1] - point[1]))
-        return math.sqrt((goal[0] - point[0])**2 + (goal[1]- point[1])**2)
+		return math.sqrt((goal[0] - point[0])**2 + (goal[1]- point[1])**2)
 
-    def isWall(point):
+	def isWall(point):
 		value = mapData[point[1] * (width) + point[0]]
-		if value >= 96:
+		if value >= 90:
 			return True	
 		return False		#Else
 		print "Found A Wall"
 
-    visited = []    				# The set of nodes already evaluated.
-    queue = [(start, 0, [])]		# The set of tentative nodes to be evaluated, initially containing the start node.
-    current = 0
+	visited = []    				# The set of nodes already evaluated.
+	queue = [(start, 0, [])]		# The set of tentative nodes to be evaluated, initially containing the start node.
+	current = 0
 
-    direction = [(i, j) for i in range(-1, 2) for j in range (-1, 2)]
-    direction.remove((0, 0))
+	direction = [(i, j) for i in range(-1, 2) for j in range (-1, 2)]
+	direction.remove((0, 0))
 
-    i = 0
-    while queue:
+	i = 0
+	while queue:
 		#showCells(visited, 5)
 
-        node, cost, path = queue.pop(0)
+		node, cost, path = queue.pop(0)
 
-        if node == goal:
-            print 'Found path'
-            print 'cost: ', cost
-            showCells(path, 2)		# Displays Path
-            showCells([],5)
-            rospy.sleep(1)
-            showCells(wayPoints(path), 3)		#Displays Waypoints
-            break
+		if node == goal:
+			print 'Found path'
+			print 'cost: ', cost
+			showCells(path, 2)		# Displays Path
+			showCells([],5)
+			rospy.sleep(1)
+			if cost > 1:
+				showCells(wayPoints(path), 3)		#Displays Waypoints
+			break
 
-        if node not in visited:
-            visited.append(node)
+		if node not in visited:
+			visited.append(node)
 
-        if isWall(node):
-            print 'Encountered a wall. Darn'
-            continue
+		if isWall(node):
+			print 'Encountered a wall. Darn'
+			continue
 
 		# Expand neighboring nodes in the list
-        for d in direction:
-            next_node = [node[0] + d[0], node[1] + d[1]]
+		for d in direction:
+			next_node = [node[0] + d[0], node[1] + d[1]]
 
-            if next_node in visited or isWall(next_node):
-                continue
+			if next_node in visited or isWall(next_node):
+				continue
 
 			# Check if wall here
-            if (d[0]**2 + d[1]**2 > 1):		# If Diagnol Direction
-                next_cost = len(path) + 5 + h(next_node, goal)
-            else:
-                next_cost = len(path) + 1 + h(next_node, goal)
+			if (d[0]**2 + d[1]**2 > 1):		# If Diagnol Direction
+				next_cost = len(path) + 5 + h(next_node, goal)
+			else:
+				next_cost = len(path) + 1 + h(next_node, goal)
 
-            i = 0
-            while i < len(queue):
-                if next_cost < queue[i][1]:
-                    break
-                i += 1
+			i = 0
+			while i < len(queue):
+				if next_cost < queue[i][1]:
+					break
+				i += 1
 
-            for j in range(len(queue), i, -1):
-                if j >= len(queue):
-                    queue.append(queue[j-1])
-                else:
-                    queue[j] = queue[j-1]
-            next_path = path[:]
-            next_path.append(next_node)
-            next_item = (next_node, next_cost, next_path)
-            if next_node not in visited:
-                if i >= len(queue):
-                    queue.append(next_item)
-                else:
-                    queue[i] = next_item
-                visited.append(next_node)
+			for j in range(len(queue), i, -1):
+				if j >= len(queue):
+					queue.append(queue[j-1])
+				else:
+					queue[j] = queue[j-1]
+			next_path = path[:]
+			next_path.append(next_node)
+			next_item = (next_node, next_cost, next_path)
+			if next_node not in visited:
+				if i >= len(queue):
+					queue.append(next_item)
+				else:
+					queue[i] = next_item
+				visited.append(next_node)
 
 
 
 def wayPoints(path):
-    gridCellRes = 1 #inches per grid cell
-    maxDist = 20 #maximum distance before a new waypoint
+    gridCellRes = .2 #inches per grid cell
+    maxDist = 4 #maximum distance before a new waypoint
     points = list()
     straightLine = 0 #distance travelled consecutively in a straight line without a waypoint
 
@@ -346,6 +349,7 @@ def moveWithAStar(start, goal):
     global offsetX
     global offsetY
     global desiredT
+    global cost
 
     aStar(start, goal)
     way = wayPoints(path)
@@ -361,7 +365,8 @@ def moveWithAStar(start, goal):
         yPosition = int((yPosition + 0.5*resolution - offsetY)/resolution)
         start = [xPosition, yPosition]
         aStar(start, goal)
-        way = wayPoints(path)
+        if cost > 1:
+        	way = wayPoints(path)
     goalX = (goal[0]*resolution)+offsetX + (.5 * resolution)
     goalY = (goal[1]*resolution)+offsetY - (.5 * resolution)
     print [goalX, goalY]
@@ -458,7 +463,8 @@ if __name__ == '__main__':
 
     pose = Pose()
     pubmotion = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, None, queue_size=10) # Publisher for commanding robot motion
-    sub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, mapCallBack)
+    globalsub = rospy.Subscriber("/move_base/global_costmap/global_costmap", OccupancyGrid, mapCallBack)
+    localsub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, mapCallBack)
     pub = rospy.Publisher("/map_check", GridCells, queue_size=1)
     pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)  
     pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
