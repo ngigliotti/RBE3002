@@ -13,6 +13,8 @@ Panels:
         - /GridCells3
         - /GridCells4
         - /GridCells5
+        - /Costmap1
+        - /Costmap2
       Splitter Ratio: 0.5
     Tree Height: 1272
   - Class: rviz/Selection
@@ -121,11 +123,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        mount_asus_xtion_pro_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         plate_bottom_link:
           Alpha: 1
           Show Axes: false
@@ -241,10 +238,10 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /map
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/GridCells
       Color: 170; 0; 0
@@ -280,6 +277,22 @@ Visualization Manager:
       Name: GridCells
       Topic: /explore
       Value: true
+    - Alpha: 0.7
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Costmap
+      Topic: /move_base/global_costmap/costmap
+      Value: true
+    - Alpha: 0.7
+      Class: rviz/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: Costmap
+      Topic: /move_base/local_costmap/costmap
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -304,16 +317,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 34.0312
+      Distance: 14.4401
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.404915
-        Y: 0.622417
-        Z: -1.32202
+        X: 1.77329
+        Y: -1.2839
+        Z: -1.0355
       Name: Current View
       Near Clip Distance: 0.01
       Pitch: 0.830397

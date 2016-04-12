@@ -12,11 +12,8 @@ import numpy
 import math 
 import rospy, tf, numpy, math
 
-wheel_rad = 3.5 / 100.0 #cm
-wheel_base = 23.0 / 100.0 #cm
 
-
-
+# Publishes a Twist Message for Driving the Robot
 def publishTwist(lin_Vel, ang_Vel):
     """Send a movement (twist) message."""
     global pubmotion
@@ -26,146 +23,22 @@ def publishTwist(lin_Vel, ang_Vel):
     pubmotion.publish(msg)
 
 
-
-def navToPose(goalX, goalY):
-    """Drive to a goal subscribed to from /move_base_simple/goal"""
-    #compute angle required to make straight-line move to desired pose
-    global xPosition
-    global yPosition
-    global theta
-    #capture desired x and y positions
-    desiredY = goalY
-    desiredX = goalX
-    #compute distance to target
-    distance = math.sqrt((desiredX - xPosition)**2 + (desiredY - yPosition)**2)
-    #compute initial turn amount
-    angle = math.degrees(math.atan2(desiredY - yPosition, desiredX - xPosition))
-
-    print "spin!" #turn to calculated angle
-    rotate(0.25, angle)
-
-    print "move!" #move in straight line specified distance to new pose
-    driveStraight(0.25, distance)
-
-    rospy.sleep(.15)
-    print "done"
-
-
-
-def driveSmooth(speed, distance):
-    """This function accepts a speed and a distance for the robot to move in a smoothed straight line."""
-    global pose
-    acceleration = .015
-    decel = .05
-    ramp = 0
-    initialX = pose.position.x
-    initialY = pose.position.y
-    atTarget = False
-    atSpeed = False
-    
-    #Loop until the distance between the attached frame and the origin is equal to the
-    #distance specified 
-    while (not atTarget and not rospy.is_shutdown()):
-    	currentX = pose.position.x
-    	currentY = pose.position.y
-    	currentDistance = math.sqrt((currentX-initialX)**2 + (currentY-initialY)**2)#Distance formula
-    	
-    	#Accelerate until reaching specified speed
-    	while (not atSpeed):
-    		if (currentDistance*3 >= distance):
-    			atSpeed = True
-    		else:
-    			if (ramp >= speed):
-    				atSpeed = True
-    			else:
-    				ramp += acceleration
-    				#print "ramp up"
-    				publishTwist(ramp, 0)
-    				rospy.sleep(0.15)
-
-    	#Calaculates the distance required to stop smoothly
-    	stopDist = (ramp**2 / (2*decel))
-
-    	#Decelerates when the robot approaches the end point
-    	if (stopDist >= (distance - currentDistance)):
-    		ramp -= decel
-    		#print "ramp down"
-    	if (currentDistance >= distance):
-    		atTarget = True
-    		publishTwist(0, 0)
-    	else:
-    		publishTwist(ramp,0)
-    		rospy.sleep(0.15)
-
-
-
-#This function accepts a speed and a distance for the robot to move in a straight line
-def driveStraight(speed, distance):
-    """This function accepts a speed and a distance for the robot to move in a straight line"""
-    global pose
-
-    initialX = pose.position.x
-    initialY = pose.position.y
-    atTarget = False
-    #Loop until the distance between the attached frame and the origin is equal to the
-    #distance specified 
-    while (not atTarget and not rospy.is_shutdown()):
-        currentX = pose.position.x
-        currentY = pose.position.y
-        currentDistance = math.sqrt((currentX-initialX)**2 + (currentY-initialY)**2)#Distance formula
-        if (currentDistance >= distance):
-            atTarget = True
-            publishTwist(0, 0)
-        else:
-            publishTwist(speed, 0)
-            rospy.sleep(0.15)
-
-
-
-def rotate(speed, angle): 
-    global odom_list
-    global pose
-    vel = Twist();   
-    direction = 1
-
-    # set rotation direction
-    error = angle-math.degrees(pose.orientation.z)
-    if (error > -180 and error < 0):
-        direction = -1
-
-    # Turns until getting the error gets small
-    while ((abs(error) >= 2) and not rospy.is_shutdown()):
-        publishTwist(0, direction*speed)
-        rospy.sleep(0.15)    
-        #print "theta: %d" % math.degrees(pose.orientation.z)
-        error = angle-math.degrees(pose.orientation.z)   
-    vel.angular.z = 0.0
-    pubmotion.publish(vel)
-
-
-
 # reads in local map
 def localMapCallBack(data):
     global localMap
     localMap = data
-    print '<Local Map Data>'
-    print data.info
-    print '<Local Map Data End>'
+    print 'Local Map Updated'
 
 
 # reads in global map
 def globalMapCallBack(data):
 	global globalMap
 	globalMap = data
-	print '<Global Map Data>'
-	print data.info
-	print '<Global Map Data End>'
-
+	print 'Global Map Updated'
 
 
 #keeps track of current location and orientation
 def tCallback(event):
-	
     global pose
     global xPosition
     global yPosition
@@ -182,25 +55,26 @@ def tCallback(event):
     odomW = orientation
     q = [odomW[0], odomW[1], odomW[2], odomW[3]]
     roll, pitch, yaw = euler_from_quaternion(q)
+
     #convert yaw to degrees
     pose.orientation.z = yaw
     theta = math.degrees(yaw)
-
 
 
 def readGoal(goal):
 	global goalX
 	global goalY
 	global desiredT
+	global globalMap
+	global mapgrid
+	global resolution
 	global mapData
 	global width
 	global height
-	global mapgrid
-	global resolution
 	global offsetX
 	global offsetY
-	global globalMap
 
+	# Intializes on the global Map
 	data = globalMap
 	mapgrid = data
 	resolution = data.info.resolution
@@ -218,24 +92,78 @@ def readGoal(goal):
 	desiredT = yaw * (180/math.pi)
 
 	goalX = int((goalX - 0.5*resolution - offsetX)/resolution)
-	goalY = int((goalY - 0.5*resolution - offsetX)/resolution)
-	#print goal.pose
-	try:
-		run()
-        
-	except rospy.ROSInterruptException:
-		pass
+	goalY = int((goalY + 0.5*resolution - offsetY)/resolution)
+
+	run()
 
 
+def navToPose(goalX, goalY):
+	global xPosition
+	global yPosition
+	global theta
 
-def readStart(startPos):
-	global startPosX
-	global startPosY
-	global resolution
-	global offsetX
-	global offsetY
-	startPosX = startPos.pose.pose.position.x
-	startPosY = startPos.pose.pose.position.y
+	print 'Navigating to pose...'
+
+	#capture desired x and y positions
+	desiredY = goalY
+	desiredX = goalX
+
+    #compute angle required to make straight-line move to desired pose
+	angle = math.degrees(math.atan2(desiredY - yPosition, desiredX - xPosition))
+
+    #compute distance to target
+	distance = math.sqrt((desiredX - xPosition)**2 + (desiredY - yPosition)**2)	
+
+	print 'Spinning to Angle: %d' % angle #turn to calculated angle
+	rotate(0.3, angle)
+
+	print 'Moving Distance: %d' % distance #move in straight line specified distance to new pose
+	driveStraight(0.1, distance)
+
+
+#This function accepts a speed and a distance for the robot to move in a straight line
+def driveStraight(speed, distance):
+    """This function accepts a speed and a distance for the robot to move in a straight line"""
+    global pose
+
+    initialX = pose.position.x
+    initialY = pose.position.y
+    atTarget = False
+
+    #Loop until the distance between the attached frame and the origin is equal to the
+    #distance specified 
+    while (not atTarget and not rospy.is_shutdown()):
+        currentX = pose.position.x
+        currentY = pose.position.y
+        currentDistance = math.sqrt((currentX-initialX)**2 + (currentY-initialY)**2) #Distance formula
+        if (currentDistance >= distance):
+            atTarget = True
+            publishTwist(0, 0)
+
+        else:
+            publishTwist(speed, 0)
+            rospy.sleep(0.05)
+
+
+def rotate(speed, angle): 
+    global odom_list
+    global pose
+    vel = Twist();   
+    direction = 1
+
+    # set rotation direction
+    error = angle-math.degrees(pose.orientation.z)
+    if (error > -180 and error < 0):
+        direction = -1
+
+    # Turns until getting the error gets small
+    while ((abs(error) >= 2) and not rospy.is_shutdown()):
+        publishTwist(0, direction*speed)
+        rospy.sleep(0.05)    
+        #print "theta: %d" % math.degrees(pose.orientation.z)
+        error = angle-math.degrees(pose.orientation.z)   
+    vel.angular.z = 0.0
+    pubmotion.publish(vel)
 
 
 
@@ -257,12 +185,6 @@ def aStar(start,goal, data):
 	offsetX = data.info.origin.position.x
 	offsetY = data.info.origin.position.y
 
-	print 'Staring AStar'
-	#print 'Start X: %d' % start[0]
-	#print 'Start Y: %d' % start[1]
-	#print 'Goal X: %d' % goal[0]
-	#print 'Goal Y: %d' % goal[1]
-
 	# Estimates the distance to the goal
 	def h(point, goal):
 		# Manhattan distance with diagonal movement
@@ -271,7 +193,7 @@ def aStar(start,goal, data):
 
 	def isWall(point):
 		value = mapData[point[1] * (width) + point[0]]
-		if value >= 90:
+		if value >= 65:
 			return True	
 		return False		#Else
 		print "Found A Wall"
@@ -343,68 +265,99 @@ def aStar(start,goal, data):
 
 
 def wayPoints(path):
-    gridCellRes = .2 #inches per grid cell
-    maxDist = 4 #maximum distance before a new waypoint
-    points = list()
-    straightLine = 0 #distance travelled consecutively in a straight line without a waypoint
+	gridCellRes = 0.2 #inches per grid cell
+	maxDist = 4 #maximum distance before a new waypoint
+	points = list()
+	straightLine = 0 #distance travelled consecutively in a straight line without a waypoint
 
-    for i in range(len(path)-1):
-        currentAngle = math.atan2(path[(i+1)][1] - path[i][1], path[(i+1)][0] - path[i][0]) #find the angle between the current and next points
+	for i in range(len(path)-1):
+		currentAngle = math.atan2(path[(i+1)][1] - path[i][1], path[(i+1)][0] - path[i][0]) #find the angle between the current and next points
 
-        if (i != 0): #if it's not the first point
-            straightLine += math.sqrt((path[i][1] - path[(i-1)][1])**2 + (path[i][0] - path[(i-1)][0])**2) * gridCellRes 
+		if (i != 0): #if it's not the first point
+			straightLine += math.sqrt((path[i][1] - path[(i-1)][1])**2 + (path[i][0] - path[(i-1)][0])**2) * gridCellRes 
 
-            if (currentAngle != lastAngle): #if the angle has changed
-                path[i].append(currentAngle) #add the current angle to the coordinates 
-                points.append(path[i]) #add the point to the list of waypoints
-                straightLine = 0
+			if (currentAngle != lastAngle): #if the angle has changed
+				#path[i].append(currentAngle) #add the current angle to the coordinates 
+				points.append(path[i]) #add the point to the list of waypoints
+				straightLine = 0
 
-            elif (straightLine >= maxDist): #if the straightLine distance has exceeded the maxDist
-                path[i].append(currentAngle) #add the current angle to the coordinates
-                points.append(path[i]) #add the point to the list of waypoints
-                straightLine = 0
+			elif (straightLine >= maxDist): #if the straightLine distance has exceeded the maxDist
+				#path[i].append(currentAngle) #add the current angle to the coordinates
+				points.append(path[i]) #add the point to the list of waypoints
+				straightLine = 0
 
-        lastAngle = currentAngle
-    path[len(path) - 1].append(currentAngle) #add the angle to the coordinates of the last point
-    points.append(path[len(path) - 1]) #add the last point to the list of waypoints
+		lastAngle = currentAngle
+	#path[len(path) - 1].append(currentAngle) #add the angle to the coordinates of the last point
+	if path:
+		points.append(path[-1]) #add the last point to the list of waypoints
 
-    return points
+	return points
 
 
 def moveWithAStar(start, goal):
-    global xPosition
-    global yPosition
-    global path
-    global resolution
-    global offsetX
-    global offsetY
-    global desiredT
-    global cost
-    global globalMap
-    global localMap
+	global xPosition
+	global yPosition
+	global path
+	global resolution
+	global offsetX
+	global offsetY
+	global desiredT
+	global cost
+	global globalMap
+	global localMap
 
-    aStar(start, goal, globalMap)
-    way = wayPoints(path)
+	showCells([[0, 0]], 1)
+	showCells([[0, 0]], 2)
+	showCells([[0, 0]], 3)
+	showCells([[0, 0]], 4)
+	showCells([[0, 0]], 5)
+	showCells([start,goal], 4)
 
-    while len(way) > 1 and len(path) > 3:
-        wayX = (way[0][0]*resolution)+offsetX + (.5 * resolution)
-        wayY = (way[0][1]*resolution)+offsetY - (.5 * resolution)
-        print 'Go to Waypoint'
-        print [wayX, wayY]
-        navToPose(wayX, wayY)
-        print 'Got to Waypoint'
-        xPosition = int((xPosition - 0.5*resolution - offsetX)/resolution)
-        yPosition = int((yPosition + 0.5*resolution - offsetY)/resolution)
-        start = [xPosition, yPosition]
-        aStar(start, goal, globalMap)
-        if cost > 1:
-        	way = wayPoints(path)
-    goalX = (goal[0]*resolution)+offsetX + (.5 * resolution)
-    goalY = (goal[1]*resolution)+offsetY - (.5 * resolution)
-    print [goalX, goalY]
-    navToPose(goalX, goalY)
-    rotate(.25, desiredT)
-    print 'Arrived at Goal'
+	print 'Calculating AStar on Global Map...'
+	aStar(start, goal, globalMap)
+	way = wayPoints(path)
+	showCells(path, 2)
+	showCells(way, 3)
+
+	rospy.sleep(5)
+
+	while len(way) > 1 and len(path) > 2:
+		# Calculates A* on the Local map from start to first waypoint
+		way1 = way[0]
+		print way
+		print way1
+		print 'Calculating AStar on Local Map...'
+		showCells([start, way1], 4)
+		aStar(start, way1, localMap) # Calculates A* on the local map from start to first waypoint
+		tempWay = wayPoints(path)
+		showCells(path, 2)
+		showCells([start, tempWay[0]], 4)
+
+		wayX = ((tempWay[0][0] + xPosition)*resolution)+offsetX + (.5 * resolution)
+		wayY = ((tempWay[0][1] + yPosition)*resolution)+offsetY - (.5 * resolution)
+		print [wayX, wayY]
+		navToPose(wayX, wayY)
+
+		# Updates Starting Position
+		xPosition = int((xPosition - 0.5*resolution - offsetX)/resolution)
+		yPosition = int((yPosition + 0.5*resolution - offsetY)/resolution)
+
+		# Calculates A* on the Global map from current waypoint to goal
+		start = [xPosition, yPosition]
+		print 'Calculating AStar on Global Map...'
+		aStar(start, goal, globalMap)
+		way = wayPoints(path)
+		showCells(path, 2)
+		showCells(way, 3)
+
+
+	goalX = (goal[0]*resolution)+offsetX + (.5 * resolution)
+	goalY = (goal[1]*resolution)+offsetY - (.5 * resolution)
+
+	navToPose(goalX, goalY)
+	print 'Rotating to Final Orientation'
+	rotate(.35, desiredT)
+	print 'Arrived at Goal'
 
 
 
@@ -474,42 +427,42 @@ def run():
     xPosition = int((xPosition - 0.5*resolution - offsetX)/resolution)
     yPosition = int((yPosition + 0.5*resolution - offsetY)/resolution)
     start = [xPosition, yPosition]
-    print start
-    print goal
+    print 'Starting Path Planning...'
+    print 'Start: ', start
+    print 'Goal: ', goal
     showCells([start, goal], 4)
     moveWithAStar(start, goal)
     
 
 
 if __name__ == '__main__':
-    global pose
-    global pubmotion
-    global pub
-    global pubpath
-    global pubway
-    global pubpoints
-    global pubexplore
-    global startPosX
-    global startPosY
-    rospy.init_node('lab3')
+	global pose
+	global pubmotion
+	global pub
+	global pubpath
+	global pubway
+	global pubpoints
+	global pubexplore
+	global startPosX
+	global startPosY
+	rospy.init_node('lab3')
 
-    pose = Pose()
-    pubmotion = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, None, queue_size=10) # Publisher for commanding robot motion
-    globalsub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, globalMapCallBack)
-    localsub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, localMapCallBack)
-    pub = rospy.Publisher("/map_check", GridCells, queue_size=1)
-    pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)  
-    pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
-    pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)
-    pubpoints = rospy.Publisher("/points", GridCells, queue_size=1)
-    pubexplore = rospy.Publisher("/explore", GridCells, queue_size=1)
-    goal_sub = rospy.Subscriber('/rbe/goal', PoseStamped, readGoal, queue_size=1) #change topic for best results
-    start_sub = rospy.Subscriber('/rbe/start', PoseStamped, readStart, queue_size=1) #change topic for best results
+	pose = Pose()
+	pubmotion = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, None, queue_size=10) # Publisher for commanding robot motion
+	globalsub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, globalMapCallBack)
+	localsub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, localMapCallBack)
+	pub = rospy.Publisher("/map_check", GridCells, queue_size=1)
+	pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)  
+	pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
+	pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)
+	pubpoints = rospy.Publisher("/points", GridCells, queue_size=1)
+	pubexplore = rospy.Publisher("/explore", GridCells, queue_size=1)
+	goal_sub = rospy.Subscriber('/rbe/goal', PoseStamped, readGoal, queue_size=1) #change topic for best results
 
-    rospy.Timer(rospy.Duration(.01), tCallback) # timer callback for robot location
-    odom_list = tf.TransformListener() #listner for robot location
-    rospy.sleep(.15)
+	rospy.Timer(rospy.Duration(.01), tCallback) # timer callback for robot location
+	odom_list = tf.TransformListener() #listner for robot location
+	rospy.sleep(.15)
 
 	#Keeps the program going
-    while not rospy.is_shutdown():
-        rospy.spin()
+	while not rospy.is_shutdown():
+		rospy.spin()
