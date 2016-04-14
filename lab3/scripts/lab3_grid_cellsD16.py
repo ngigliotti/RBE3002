@@ -254,6 +254,8 @@ def navToPose(goalX, goalY):
     #compute angle required to make straight-line move to desired pose
 	angle = math.degrees(math.atan2(desiredY - yPosition, desiredX - xPosition))
 	#compute distance to target
+	print [xPosition, yPosition]
+	print [desiredX, desiredY]
 	distance = math.sqrt((desiredX - xPosition)**2 + (desiredY - yPosition)**2)
 	print 'Point Destination: ', [desiredX, desiredY]
 
@@ -268,9 +270,9 @@ def navToPose(goalX, goalY):
 	showCells2([[xPosition, yPosition], [desiredX, desiredY]], 4)
 
 	start = transformToLocal([xPosition, yPosition])
-	xPosition = int((start[0] - 0.5*localResolution - localOffsetX)/localResolution)
-	yPosition = int((start[1] + 0.5*localResolution - localOffsetY)/localResolution)
-	start = [xPosition, yPosition]
+	xPos = int((start[0] - 0.5*localResolution - localOffsetX)/localResolution)
+	yPos = int((start[1] + 0.5*localResolution - localOffsetY)/localResolution)
+	start = [xPos, yPos]
 
 	goal = transformToLocal([desiredX, desiredY])
 	desiredX = int((goal[0] - 0.5*localResolution - localOffsetX)/localResolution)
@@ -396,10 +398,12 @@ def aStar(start, goal, data):
 		return math.sqrt((goal[0] - point[0])**2 + (goal[1]- point[1])**2)
 
 	def isWall(point):
-		value = mapData[point[1] * (width) + point[0]]
-		if value >= expandedBarrier:
-			return True	
-		return False		#Else
+		index = point[1] * (width) + point[0]
+		if (index < width * height):
+			value = mapData[index]
+			if value >= expandedBarrier:
+				return True	
+			return False		#Else
 
 	visited = []    				# The set of nodes already evaluated.
 	queue = [(start, 0, [])]		# The set of tentative nodes to be evaluated, initially containing the start node.
@@ -528,9 +532,9 @@ def moveWithAStar(start, goal):
 		navToPose(wayX, wayY)
 
 		# Updates Starting Position
-		xPosition = int((xPosition - 0.5*globalResolution - globalOffsetX)/globalResolution)
-		yPosition = int((yPosition + 0.5*globalResolution - globalOffsetY)/globalResolution)
-		start = [xPosition, yPosition]
+		xPos = int((xPosition - 0.5*globalResolution - globalOffsetX)/globalResolution)
+		yPos = int((yPosition + 0.5*globalResolution - globalOffsetY)/globalResolution)
+		start = [xPos, yPos]
 
 		# Calculates A* on the Global map from current waypoint to goal
 		print 'Calculating AStar on Global Map...'
@@ -668,9 +672,9 @@ def run():
     global yPosition
     global localMap
     goal = [goalX, goalY]
-    xPosition = int((xPosition - 0.5*globalResolution - globalOffsetX)/globalResolution)
-    yPosition = int((yPosition + 0.5*globalResolution - globalOffsetY)/globalResolution)
-    start = [xPosition, yPosition]
+    xPos = int((xPosition - 0.5*globalResolution - globalOffsetX)/globalResolution)
+    yPos = int((yPosition + 0.5*globalResolution - globalOffsetY)/globalResolution)
+    start = [xPos, yPos]
     print 'Starting Path Planning...'
     print 'Start: ', start
     print 'Goal: ', goal
