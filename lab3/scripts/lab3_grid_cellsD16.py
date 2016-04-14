@@ -5,6 +5,7 @@ from nav_msgs.msg import GridCells
 from std_msgs.msg import String
 from geometry_msgs.msg import Twist, Point, PointStamped, Pose, PoseStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry, OccupancyGrid
+from map_msgs.msg import OccupancyGridUpdate
 from kobuki_msgs.msg import BumperEvent
 from tf.transformations import euler_from_quaternion
 import tf
@@ -25,16 +26,98 @@ def publishTwist(lin_Vel, ang_Vel):
 
 # reads in local map
 def localMapCallBack(data):
-    global localMap
-    localMap = data
-    print 'Local Map Updated'
+	global localMap
+	global localMapData
+	global localOffsetX
+	global localOffsetY
+	global localWidth
+	global localHeight
+	global localResolution
+
+	localMap = data
+	localMapData = list(data.data)
+	localOffsetX = data.info.origin.position.x
+	localOffsetY = data.info.origin.position.y
+	localWidth = data.info.width
+	localHeight = data.info.height
+	localResolution = data.info.resolution
+
+	#print 'Local Map Updated'
 
 
 # reads in global map
 def globalMapCallBack(data):
 	global globalMap
+	global globalMapData
+	global globalOffsetX
+	global globalOffsetY
+	global globalWidth
+	global globalHeight
+	global globalResolution
+
 	globalMap = data
-	print 'Global Map Updated'
+	globalMapData = list(data.data)
+	globalOffsetX = data.info.origin.position.x
+	globalOffsetY = data.info.origin.position.y
+	globalWidth = data.info.width
+	globalHeight = data.info.height
+	globalResolution = data.info.resolution
+
+	#print 'Global Map Updated'
+
+
+def updateLocal(data):
+	global localMap
+	global localMapData
+	global localOffsetX
+	global localOffsetY
+	global localWidth
+	global localHeight
+
+	#print 'Updating Local Map...'
+	update = data.data
+	w = data.width
+	h = data.height
+	x = data.x
+	y = data.y
+
+	indexUpdate = 0
+	index = x + localWidth*(y-1) 
+	for i in range(h):
+		for j in range(w):
+			localMapData[index] = update[indexUpdate]
+			indexUpdate += 1
+			index += 1
+		index += localWidth - w
+
+
+
+def updateGlobal(data):
+	global globalMap
+	global globalMapData
+	global globalOffsetX
+	global globalOffsetY
+	global globalWidth
+	global globalHeight
+
+	#print 'Updating Global Map...'
+
+	update = data.data
+	w = data.width
+	h = data.height
+	x = data.x
+	y = data.y
+
+	indexUpdate = 0
+	index = x + globalWidth*(y-1) 
+	for i in range(h):
+		for j in range(w):
+			globalMapData[index] = update[indexUpdate]
+			indexUpdate += 1
+			index += 1
+		index += localWidth - w
+
+
 
 
 #keeps track of current location and orientation
@@ -44,7 +127,7 @@ def tCallback(event):
     global yPosition
     global theta
 
-    odom_list.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(2.0))
+    odom_list.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(3.0))
     (position, orientation) = odom_list.lookupTransform('map','base_footprint', rospy.Time(0))
     pose.position.x=position[0]
     pose.position.y=position[1]
@@ -67,22 +150,22 @@ def readGoal(goal):
 	global desiredT
 	global globalMap
 	global mapgrid
-	global resolution
-	global mapData
-	global width
-	global height
-	global offsetX
-	global offsetY
+	global globalResolution
+	global globalMapData
+	global globalWidth
+	global globalHeight
+	global globalOffsetX
+	global globalOffsetY
 
 	# Intializes on the global Map
 	data = globalMap
 	mapgrid = data
-	resolution = data.info.resolution
-	mapData = data.data
-	width = data.info.width
-	height = data.info.height
-	offsetX = data.info.origin.position.x
-	offsetY = data.info.origin.position.y
+	globalResolution = data.info.resolution
+	globalMapData = list(data.data)
+	globalWidth = data.info.width
+	globalHeight = data.info.height
+	globalOffsetX = data.info.origin.position.x
+	globalOffsetY = data.info.origin.position.y
 
 	goalX = goal.pose.position.x
 	goalY = goal.pose.position.y
@@ -91,8 +174,8 @@ def readGoal(goal):
 	roll, pitch, yaw = euler_from_quaternion(q)
 	desiredT = yaw * (180/math.pi)
 
-	goalX = int((goalX - 0.5*resolution - offsetX)/resolution)
-	goalY = int((goalY + 0.5*resolution - offsetY)/resolution)
+	goalX = int((goalX - 0.5*globalResolution - globalOffsetX)/globalResolution)
+	goalY = int((goalY + 0.5*globalResolution - globalOffsetY)/globalResolution)
 
 	run()
 
@@ -117,22 +200,22 @@ def transformToGlobal(coord):
 
 def transformToLocal(coord):
 	global mapgrid
-	global resolution
-	global mapData
-	global width
-	global height
-	global offsetX
-	global offsetY
+	global localResolution
+	global localMapData
+	global localWidth
+	global localHeight
+	global localOffsetX
+	global localOffsetY
 	global localMap
 	# Intializes on the global Map
 	data = localMap
 	mapgrid = data
-	resolution = data.info.resolution
-	mapData = data.data
-	width = data.info.width
-	height = data.info.height
-	offsetX = data.info.origin.position.x
-	offsetY = data.info.origin.position.y
+	localResolution = data.info.resolution
+	localMapData = list(data.data)
+	localWidth = data.info.width
+	localHeight = data.info.height
+	localOffsetX = data.info.origin.position.x
+	localOffsetY = data.info.origin.position.y
 
 
 	global odom_list
@@ -158,9 +241,9 @@ def navToPose(goalX, goalY):
 	global theta
 	global localMap
 	global path
-	global resolution
-	global offsetX
-	global offsetY
+	global localResolution
+	global localOffsetX
+	global localOffsetY
 
 	print 'Navigating to pose...'
 
@@ -177,19 +260,21 @@ def navToPose(goalX, goalY):
 	rospy.sleep(5)
 
 	print 'Spinning to Angle: %d' % angle #turn to calculated angle
-	rotate(0.3, angle)
+	rotate(0.5, angle)
+
+	#rospy.sleep(10)
 
 	# Transforms start and end points to the LocalMap
 	showCells2([[xPosition, yPosition], [desiredX, desiredY]], 4)
 
 	start = transformToLocal([xPosition, yPosition])
-	xPosition = int((start[0] - 0.5*resolution - offsetX)/resolution)
-	yPosition = int((start[1] + 0.5*resolution - offsetY)/resolution)
+	xPosition = int((start[0] - 0.5*localResolution - localOffsetX)/localResolution)
+	yPosition = int((start[1] + 0.5*localResolution - localOffsetY)/localResolution)
 	start = [xPosition, yPosition]
 
 	goal = transformToLocal([desiredX, desiredY])
-	desiredX = int((goal[0] - 0.5*resolution - offsetX)/resolution)
-	desiredY = int((goal[1] + 0.5*resolution - offsetY)/resolution)
+	desiredX = int((goal[0] - 0.5*localResolution - localOffsetX)/localResolution)
+	desiredY = int((goal[1] + 0.5*localResolution - localOffsetY)/localResolution)
 	goal = [desiredX, desiredY]
 
 	# Calculate A* on the local map
@@ -201,13 +286,12 @@ def navToPose(goalX, goalY):
 	rospy.sleep(0.1)
 	tempWay = wayPoints(path)
 
-	print path
+	#print path
 
 	for j in range(len(path)):
-		path[j][0] = ((path[j][0] + xPosition)*resolution)+offsetX + (.5 * resolution)
-		path[j][1] = ((path[j][1] + yPosition)*resolution)+offsetY - (.5 * resolution)
+		path[j][0] = ((path[j][0] + xPosition)*localResolution)+localOffsetX + (.5 * localResolution)
+		path[j][1] = ((path[j][1] + yPosition)*localResolution)+localOffsetY - (.5 * localResolution)
 		path[j] = transformToGlobal(path[j])
-		print j
 
 	tempWay = wayPoints(path)
 
@@ -215,8 +299,8 @@ def navToPose(goalX, goalY):
 	if (len(path) > 2):
 		showCells2([path[0], path[-1]], 4)
 
-	print 'waypoints...'
-	print tempWay
+	#print 'waypoints...'
+	#print tempWay
 	showCells2(tempWay, 3)
 
 
@@ -226,22 +310,22 @@ def navToPose(goalX, goalY):
 		desiredX = tempWay[0][0]
 
 
-	if ((tempWay[0][0]-path[-1][0])**2 + (tempWay[0][1]-path[-1][1])**2 > 1):
-		print 'Obstacle Found!'
-		print (tempWay[0][0]-path[-1][0])**2 + (tempWay[0][1]-path[-1][1])**2
+	#if ((tempWay[0][0]-path[-1][0])**2 + (tempWay[0][1]-path[-1][1])**2 > .5):
+	#	print 'Obstacle Found!'
+	#	print (tempWay[0][0]-path[-1][0])**2 + (tempWay[0][1]-path[-1][1])**2
 		#compute angle required to make straight-line move to desired pose
-		angle = math.degrees(math.atan2(desiredY - yPosition, desiredX - xPosition))
+	#	angle = math.degrees(math.atan2(desiredY - yPosition, desiredX - xPosition))
 		#compute distance to target
-		distance = math.sqrt((desiredX - xPosition)**2 + (desiredY - yPosition)**2)
+	#	distance = math.sqrt((desiredX - xPosition)**2 + (desiredY - yPosition)**2)
 
-	rospy.sleep(5)
+	#rospy.sleep(5)
 
 	#print [desiredX, desiredY]
 	print 'Spinning to Angle: %d' % angle #turn to calculated angle
-	rotate(0.3, angle)
+	rotate(0.5, angle)
 
 	print 'Moving Distance: ', distance #move in straight line specified distance to new pose
-	driveStraight(0.1, distance)
+	driveStraight(0.25, distance)
 
 
 #This function accepts a speed and a distance for the robot to move in a straight line
@@ -294,17 +378,10 @@ def aStar(start, goal, data):
 	global localMap
 	global cost
 	global path
-	global mapData
-	global width
-	global height
-	global mapgrid
-	global resolution
-	global offsetX
-	global offsetY
 	global obstacles
 	mapgrid = data
 	resolution = data.info.resolution
-	mapData = data.data
+	mapData = list(data.data)
 	width = data.info.width
 	height = data.info.height
 	offsetX = data.info.origin.position.x
@@ -334,7 +411,7 @@ def aStar(start, goal, data):
 	i = 0
 	while queue:
 
-		showCells(visited, 5)
+		#showCells(visited, 5)
 
 		node, cost, path = queue.pop(0)
 
@@ -423,14 +500,13 @@ def moveWithAStar(start, goal):
 	global xPosition
 	global yPosition
 	global path
-	global resolution
-	global offsetX
-	global offsetY
+	global globalResolution
+	global globalOffsetX
+	global globalOffsetY
 	global desiredT
 	global cost
 	global globalMap
 	global localMap
-	global mapgrid
 
 	showCells([[0, 0]], 1)
 	showCells([[0, 0]], 2)
@@ -440,41 +516,34 @@ def moveWithAStar(start, goal):
 	showCells([start,goal], 4)
 
 	print 'Calculating AStar on Global Map...'
+	print [start, goal]
 	aStar(start, goal, globalMap)
 	way = wayPoints(path)
 	showCells(path, 2)
 	showCells(way, 3)
 
 	while len(way) > 1 and len(path) > 2:
-		wayX = ((way[0][0])*resolution)+offsetX + (.5 * resolution)
-		wayY = ((way[0][1])*resolution)+offsetY - (.5 * resolution)
+		wayX = ((way[0][0])*globalResolution)+globalOffsetX + (.5 * globalResolution)
+		wayY = ((way[0][1])*globalResolution)+globalOffsetY - (.5 * globalResolution)
 		navToPose(wayX, wayY)
 
-		# Intializes on the global Map
-		data = globalMap
-		mapgrid = data
-		resolution = data.info.resolution
-		mapData = data.data
-		width = data.info.width
-		height = data.info.height
-		offsetX = data.info.origin.position.x
-		offsetY = data.info.origin.position.y
-
 		# Updates Starting Position
-		xPosition = int((xPosition - 0.5*resolution - offsetX)/resolution)
-		yPosition = int((yPosition + 0.5*resolution - offsetY)/resolution)
+		xPosition = int((xPosition - 0.5*globalResolution - globalOffsetX)/globalResolution)
+		yPosition = int((yPosition + 0.5*globalResolution - globalOffsetY)/globalResolution)
 		start = [xPosition, yPosition]
 
 		# Calculates A* on the Global map from current waypoint to goal
 		print 'Calculating AStar on Global Map...'
+		print [start, goal]
 		aStar(start, goal, globalMap)
 		way = wayPoints(path)
 		showCells(path, 2)
 		showCells(way, 3)
 
-	goalX = (goal[0]*resolution)+offsetX + (.5 * resolution)
-	goalY = (goal[1]*resolution)+offsetY - (.5 * resolution)
-
+	goalX = (goal[0]*globalResolution)+globalOffsetX + (.5 * globalResolution)
+	goalY = (goal[1]*globalResolution)+globalOffsetY - (.5 * globalResolution)
+	print 'Final Time-----------------------------------'
+	print [goalX, goalY]
 	navToPose(goalX, goalY)
 	print 'Rotating to Final Orientation'
 	rotate(.35, desiredT)
@@ -517,14 +586,14 @@ def showCells(list, num):
 
 	cells = GridCells()
 	cells.header.frame_id = 'map'
-	cells.cell_width = resolution 
-	cells.cell_height = resolution
+	cells.cell_width = globalResolution 
+	cells.cell_height = globalResolution
 
 	for i in range(len(list)): 
 		point=Point()
 		#print list[i]
-		point.x=(list[i][0]*resolution)+offsetX + (.5 * resolution) # added secondary offset 
-		point.y=(list[i][1]*resolution)+offsetY - (.5 * resolution) # added secondary offset ... Magic ?
+		point.x=(list[i][0]*globalResolution)+globalOffsetX + (.5 * globalResolution) # added secondary offset 
+		point.y=(list[i][1]*globalResolution)+globalOffsetY - (.5 * globalResolution) # added secondary offset ... Magic ?
 		if num == 1:
 			point.z = 0
 		if num == 2:
@@ -560,8 +629,8 @@ def showCells2(list, num):
 
 	cells = GridCells()
 	cells.header.frame_id = 'map'
-	cells.cell_width = resolution 
-	cells.cell_height = resolution
+	cells.cell_width = globalResolution 
+	cells.cell_height = globalResolution
 
 	for i in range(len(list)): 
 		point=Point()
@@ -599,8 +668,8 @@ def run():
     global yPosition
     global localMap
     goal = [goalX, goalY]
-    xPosition = int((xPosition - 0.5*resolution - offsetX)/resolution)
-    yPosition = int((yPosition + 0.5*resolution - offsetY)/resolution)
+    xPosition = int((xPosition - 0.5*globalResolution - globalOffsetX)/globalResolution)
+    yPosition = int((yPosition + 0.5*globalResolution - globalOffsetY)/globalResolution)
     start = [xPosition, yPosition]
     print 'Starting Path Planning...'
     print 'Start: ', start
@@ -633,6 +702,9 @@ if __name__ == '__main__':
 	pubpoints = rospy.Publisher("/points", GridCells, queue_size=1)
 	pubexplore = rospy.Publisher("/explore", GridCells, queue_size=1)
 	goal_sub = rospy.Subscriber('/rbe/goal', PoseStamped, readGoal, queue_size=1) #change topic for best results
+	localupdates = rospy.Subscriber('/move_base/local_costmap/costmap_updates', OccupancyGridUpdate, updateLocal, queue_size=1)
+	globalupdates = rospy.Subscriber('/move_base/local_costmap/costmap_updates', OccupancyGridUpdate, updateGlobal, queue_size=1)
+
 
 	rospy.Timer(rospy.Duration(.01), tCallback) # timer callback for robot location
 	odom_list = tf.TransformListener() #listner for robot location
