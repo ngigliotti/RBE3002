@@ -262,7 +262,7 @@ def navToPose(goalX, goalY):
 	rospy.sleep(5)
 
 	print 'Spinning to Angle: %d' % angle #turn to calculated angle
-	rotate(0.5, angle)
+	rotate(0.35, angle)
 
 	#rospy.sleep(10)
 
@@ -283,7 +283,6 @@ def navToPose(goalX, goalY):
 	print 'Calculating AStar on Local Map...'
 	print [start, goal]
 	aStar(start, goal, localMap) # Calculates A* on the local map from start to first waypoint
-	
 	# Transforms each of the points in the path to Global Space
 	rospy.sleep(0.1)
 	tempWay = wayPoints(path)
@@ -291,8 +290,8 @@ def navToPose(goalX, goalY):
 	#print path
 
 	for j in range(len(path)):
-		path[j][0] = ((path[j][0] + xPosition)*localResolution)+localOffsetX + (.5 * localResolution)
-		path[j][1] = ((path[j][1] + yPosition)*localResolution)+localOffsetY - (.5 * localResolution)
+		path[j][0] = ((path[j][0])*localResolution)+localOffsetX + (.5 * localResolution)
+		path[j][1] = ((path[j][1])*localResolution)+localOffsetY - (.5 * localResolution)
 		path[j] = transformToGlobal(path[j])
 
 	tempWay = wayPoints(path)
@@ -304,30 +303,31 @@ def navToPose(goalX, goalY):
 	#print 'waypoints...'
 	#print tempWay
 	showCells2(tempWay, 3)
-
-
+	#print tempWay
+	
 	# New Values after calculating on local map
-	if len(tempWay) > 1:
-		desiredY = tempWay[0][1]
-		desiredX = tempWay[0][0]
+	desiredY = tempWay[0][1]
+	desiredX = tempWay[0][0]
+	print [desiredX, desiredY]
+	print [xPosition, yPosition]
 
 
 	#if ((tempWay[0][0]-path[-1][0])**2 + (tempWay[0][1]-path[-1][1])**2 > .5):
 	#	print 'Obstacle Found!'
 	#	print (tempWay[0][0]-path[-1][0])**2 + (tempWay[0][1]-path[-1][1])**2
-		#compute angle required to make straight-line move to desired pose
-	#	angle = math.degrees(math.atan2(desiredY - yPosition, desiredX - xPosition))
-		#compute distance to target
-	#	distance = math.sqrt((desiredX - xPosition)**2 + (desiredY - yPosition)**2)
+	#compute angle required to make straight-line move to desired pose
+	angle = math.degrees(math.atan2(desiredY - yPosition, desiredX - xPosition))
+	#compute distance to target
+	distance = math.sqrt((desiredX - xPosition)**2 + (desiredY - yPosition)**2)
 
 	#rospy.sleep(5)
 
 	#print [desiredX, desiredY]
 	print 'Spinning to Angle: %d' % angle #turn to calculated angle
-	rotate(0.5, angle)
+	rotate(0.35, angle)
 
 	print 'Moving Distance: ', distance #move in straight line specified distance to new pose
-	driveStraight(0.25, distance)
+	driveStraight(0.15, distance)
 
 
 #This function accepts a speed and a distance for the robot to move in a straight line
@@ -404,6 +404,9 @@ def aStar(start, goal, data):
 			if value >= expandedBarrier:
 				return True	
 			return False		#Else
+		else:
+			print 'No Valid Path'
+			return [[]]
 
 	visited = []    				# The set of nodes already evaluated.
 	queue = [(start, 0, [])]		# The set of tentative nodes to be evaluated, initially containing the start node.
@@ -429,6 +432,8 @@ def aStar(start, goal, data):
 
 		if isWall(node):
 			if (node == start):
+				expandedBarrier = mapData[node[1] * (width) + node[0]]
+			if (node == goal):
 				expandedBarrier = mapData[node[1] * (width) + node[0]]
 			else:
 				print 'Encountered a wall. Darn'
@@ -498,6 +503,23 @@ def wayPoints(path):
 		points.append(path[-1]) #add the last point to the list of waypoints
 
 	return points
+
+
+def wayPoints2(path):
+	points = list()
+	maxDist = 5
+	i = 0
+
+
+	while (i < len(path) - 1):
+		if (i + maxDist > len(path)):
+			points.append(path[-1])
+			return points
+		i+=maxDist
+		points.append(path[i])
+
+	return points
+
 
 
 def moveWithAStar(start, goal):
