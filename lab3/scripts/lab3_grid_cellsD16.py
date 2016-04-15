@@ -42,7 +42,7 @@ def localMapCallBack(data):
 	localHeight = data.info.height
 	localResolution = data.info.resolution
 
-	#print 'Local Map Updated'
+	print 'Local Map Updated'
 
 
 # reads in global map
@@ -63,7 +63,7 @@ def globalMapCallBack(data):
 	globalHeight = data.info.height
 	globalResolution = data.info.resolution
 
-	#print 'Global Map Updated'
+	print 'Global Map Updated'
 
 
 def updateLocal(data):
@@ -262,7 +262,7 @@ def navToPose(goalX, goalY):
 	rospy.sleep(5)
 
 	print 'Spinning to Angle: %d' % angle #turn to calculated angle
-	rotate(0.35, angle)
+	rotate(0.5, angle)
 
 	#rospy.sleep(10)
 
@@ -278,6 +278,8 @@ def navToPose(goalX, goalY):
 	desiredX = int((goal[0] - 0.5*localResolution - localOffsetX)/localResolution)
 	desiredY = int((goal[1] + 0.5*localResolution - localOffsetY)/localResolution)
 	goal = [desiredX, desiredY]
+
+	rospy.sleep(10)
 
 	# Calculate A* on the local map
 	print 'Calculating AStar on Local Map...'
@@ -304,17 +306,14 @@ def navToPose(goalX, goalY):
 	#print tempWay
 	showCells2(tempWay, 3)
 	#print tempWay
-	
+
 	# New Values after calculating on local map
+	#for i in range(len(tempWay)):
 	desiredY = tempWay[0][1]
 	desiredX = tempWay[0][0]
 	print [desiredX, desiredY]
 	print [xPosition, yPosition]
 
-
-	#if ((tempWay[0][0]-path[-1][0])**2 + (tempWay[0][1]-path[-1][1])**2 > .5):
-	#	print 'Obstacle Found!'
-	#	print (tempWay[0][0]-path[-1][0])**2 + (tempWay[0][1]-path[-1][1])**2
 	#compute angle required to make straight-line move to desired pose
 	angle = math.degrees(math.atan2(desiredY - yPosition, desiredX - xPosition))
 	#compute distance to target
@@ -324,10 +323,10 @@ def navToPose(goalX, goalY):
 
 	#print [desiredX, desiredY]
 	print 'Spinning to Angle: %d' % angle #turn to calculated angle
-	rotate(0.35, angle)
+	rotate(0.5, angle)
 
 	print 'Moving Distance: ', distance #move in straight line specified distance to new pose
-	driveStraight(0.15, distance)
+	driveStraight(0.25, distance)
 
 
 #This function accepts a speed and a distance for the robot to move in a straight line
@@ -389,8 +388,7 @@ def aStar(start, goal, data):
 	offsetX = data.info.origin.position.x
 	offsetY = data.info.origin.position.y
 
-	expandedBarrier = 60
-
+	expandedBarrier = 80
 	# Estimates the distance to the goal
 	def h(point, goal):
 		# Manhattan distance with diagonal movement
@@ -477,12 +475,12 @@ def aStar(start, goal, data):
 
 def wayPoints(path):
 	gridCellRes = 0.2 #inches per grid cell
-	maxDist = 4 #maximum distance before a new waypoint
+	maxDist = 7 #maximum distance before a new waypoint
 	points = list()
 	straightLine = 0 #distance travelled consecutively in a straight line without a waypoint
 
-	for i in range(len(path)-1):
-		currentAngle = math.atan2(path[(i+1)][1] - path[i][1], path[(i+1)][0] - path[i][0]) #find the angle between the current and next points
+	for i in range(len(path)-2):
+		currentAngle = math.atan2(path[(i+2)][1] - path[i][1], path[(i+2)][0] - path[i][0]) #find the angle between the current and next points
 
 		if (i != 0): #if it's not the first point
 			straightLine += math.sqrt((path[i][1] - path[(i-1)][1])**2 + (path[i][0] - path[(i-1)][0])**2) * gridCellRes 
