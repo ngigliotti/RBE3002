@@ -388,7 +388,7 @@ def aStar(start, goal, data):
 	offsetX = data.info.origin.position.x
 	offsetY = data.info.origin.position.y
 
-	expandedBarrier = 80
+	expandedBarrier = 20
 	# Estimates the distance to the goal
 	def h(point, goal):
 		# Manhattan distance with diagonal movement
