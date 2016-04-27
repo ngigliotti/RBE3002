@@ -58,26 +58,32 @@ def aStar(start, goal, map):
 
 	print 'Starting AStar...'
 
-	# Show Start and End points in RViz
-	showCells([start], MyGlobals.pubStart, map)
-	showCells([goal], MyGlobals.pubEnd, map)
+	if map == MyGlobals.globalMap:
+		# Show Start and End points in RViz
+		showCells([start], MyGlobals.pubStart, map)
+		showCells([goal], MyGlobals.pubEnd, map)
+
+	print 'Start: ', start
+	print 'Goal: ', goal
 
 
 	while queue:
 
 		# Show Explored Cells
-		showCells(visited, MyGlobals.pubExplored, map)
+		#showCells(visited, MyGlobals.pubExplored, map)
 
 		node, cost, path = queue.pop(0)
 
 		if node == goal:
 			print 'Found path'
 
-			# Shows Path
-			showCells(path, MyGlobals.pubTotalPath, map)
+			if map == MyGlobals.globalMap:
 
-			# Clears Exploring Area
-			showCells([], MyGlobals.pubExplored, map)
+				# Shows Path
+				showCells(path, MyGlobals.pubTotalPath, map)
+
+				# Clears Exploring Area
+				showCells([], MyGlobals.pubExplored, map)
 
 			return path
 			break
@@ -169,18 +175,27 @@ def pathPlanningNav(goal):
 
 	print 'Starting Path Planning...'
 
-	firstLocalWaypoint = MyGlobals.robotPose
+	firstLocalWaypoint = MyGlobals.robotPose.position
+
+	firstTime = True
+	globalWaypoints = []
 
 	# Loops until the first waypoint in the local path is the goal
-	while firstLocalWaypoint.position.x != goal.position.x and firstLocalWaypoint.position.y != goal.position.y:
+	while firstTime or len(globalWaypoints) > 1:
+		firstTime = False
+
 		print 'Global Map Path Planning...'
 
 		# Calculates overall path on the global map
 		globalPath = aStar(MyGlobals.robotPose, goal, MyGlobals.globalMap)
 		globalWaypoints = wayPoints(globalPath, MyGlobals.globalMap)
 		firstGlobalWaypoint = globalWaypoints[0]
-		newGoal = Pose()
+
+		showCells([firstGlobalWaypoint], MyGlobals.pubEnd, MyGlobals.globalMap)
+
 		newGoal = convertToPose(firstGlobalWaypoint, MyGlobals.globalMap)
+
+		print 'New Goal: ', newGoal
 
 		print 'Local Map Path Planning...'
 
@@ -188,8 +203,8 @@ def pathPlanningNav(goal):
 		localPath = aStar(MyGlobals.robotPose, newGoal, MyGlobals.localMap)
 		localWaypoints = wayPoints(localPath, MyGlobals.localMap)
 		firstLocalWaypoint = localWaypoints[0]
-		localGoal = Pose()
-		localGoal.position = firstLocalWaypoint
+		localGoal = convertToPose(firstLocalWaypoint, MyGlobals.localMap)
+		localGoal.position = transformToGlobal(localGoal.position)
 
 		# Navigates to first waypoint in the local path
 		navToPose(localGoal, False)

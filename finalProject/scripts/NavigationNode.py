@@ -17,6 +17,7 @@ from display import expandObstacles, clearAllDisplay
 import drive
 from pathPlanning import pathPlanningNav
 from settings import MyGlobals
+from roomMapping import mapRoom
 
 
 
@@ -84,7 +85,11 @@ def positionCallback(event):
 	# Updates the orientation for the robot pose
 	q = [orient[0], orient[1], orient[2], orient[3]]
 	roll, pitch, yaw = euler_from_quaternion(q)
-	MyGlobals.robotPose.orientation.z = yaw
+	MyGlobals.robotPose.orientation.x = orient[0]
+	MyGlobals.robotPose.orientation.y = orient[1]
+	MyGlobals.robotPose.orientation.z = orient[2]
+	MyGlobals.robotPose.orientation.w = orient[3]
+
 
 	# Publishes the robots position for visual use in rviz
 	publishPose = PoseStamped()
@@ -99,6 +104,7 @@ def positionCallback(event):
 def readGoal(goal):
 	clearAllDisplay()
 	pathPlanningNav(goal)
+	mapRoom()
 
 
 
@@ -112,6 +118,7 @@ if __name__ == '__main__':
 	localupdates = rospy.Subscriber('/move_base/local_costmap/costmap_updates', OccupancyGridUpdate, updateLocal, queue_size=1)
 	globalupdates = rospy.Subscriber('/move_base/global_costmap/costmap_updates', OccupancyGridUpdate, updateGlobal, queue_size=1)
 	subGoal = rospy.Subscriber('/rbe/goal', PoseStamped, readGoal, queue_size=1)
+	#mainMap = rospy.Subscriber('/map', OccupancyGrid, mapCallback)
 
 	# timer callback for robot location
 	rospy.Timer(rospy.Duration(.01), positionCallback) 

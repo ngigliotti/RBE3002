@@ -365,7 +365,7 @@ def rotate(speed, angle):
         direction = -1
 
     # Turns until getting the error gets small
-    while ((abs(error) >= 2) and not rospy.is_shutdown()):
+    while ((abs(error) >= 1) and not rospy.is_shutdown()):
         publishTwist(0, direction*speed)
         rospy.sleep(0.05)    
         #print "theta: %d" % math.degrees(pose.orientation.z)

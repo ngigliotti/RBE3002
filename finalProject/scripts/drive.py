@@ -2,6 +2,7 @@
 
 from settings import MyGlobals
 from geometry_msgs.msg import Twist
+from tf.transformations import euler_from_quaternion
 import math
 import rospy
 
@@ -19,7 +20,7 @@ def publishTwist(lin_Vel, ang_Vel):
 
 # goal: Pose object to calculate orientation angle on
 def angleFromPose(goal):
-	quat = goal.pose.orientation
+	quat = goal.orientation
 	q = [quat.x, quat.y, quat.z, quat.w]
 	roll, pitch, yaw = euler_from_quaternion(q)
 	return yaw * (180/math.pi)
@@ -28,36 +29,53 @@ def angleFromPose(goal):
 
 # angle: Float type of angle in degrees to rotate to
 def rotate(angle):
-
-	kp = .01
-	maxSpeed = 0.5 
-	tolerance = 1
-	error = 1 # sets original error value so it originally enters loop
-
-    # transforms the input angle into range 0 to 360 deg
-	angle = angle % 360
-	if angle < 0:
-		angle += 360
+	speed = 0.25
+	vel = Twist();
+	direction = 1
 
 	print 'Rotating...'
-	print angle
-	# Rotates the robot until it gets close to the correct angle
-	while (abs(error) >= tolerance and not rospy.is_shutdown()):
-		# Calculates the current robots angle in range o to 360 deg
-		robotAngle = math.degrees(MyGlobals.robotPose.orientation.z)
-		if robotAngle < 0:
-			robotAngle += 360
 
-		error = angle - robotAngle
+	# set rotation direction
+	error = angle - angleFromPose(MyGlobals.robotPose)
+	if (error > -180 and error < 0):
+		direction = -1
 
-		angular = max(maxSpeed, min(-maxSpeed, kp*error))
+	# Turns until getting the error gets small
+	while ((abs(error) >= 3) and not rospy.is_shutdown()):
 
-		print 'Speed: ', angular
-		publishTwist(0, angular)
+		publishTwist(0, direction*speed)
+		rospy.sleep(0.05)    
+		error = angle - angleFromPose(MyGlobals.robotPose) 
+	vel.angular.z = 0.0
+	MyGlobals.pubMotion.publish(vel)
 
-	# Stops the robot once it is close to the correct angle
-	print 'Done Rotating'  
-	publishTwist(0, 0)
+
+
+#This function accepts a speed and a distance for the robot to move in a straight line
+def driveStraight(distance):
+	speed = 0.3 
+	"""This function accepts a speed and a distance for the robot to move in a straight line"""
+
+	print 'Driving...'
+
+	initialX = MyGlobals.robotPose.position.x
+	initialY = MyGlobals.robotPose.position.y
+	atTarget = False
+
+	#Loop until the distance between the attached frame and the origin is equal to the
+	#distance specified 
+	while (not atTarget and not rospy.is_shutdown()):
+		currentX = MyGlobals.robotPose.position.x
+		currentY = MyGlobals.robotPose.position.y
+		currentDistance = math.sqrt((currentX-initialX)**2 + (currentY-initialY)**2) #Distance formula
+		if (currentDistance >= distance):
+			atTarget = True
+			publishTwist(0, 0)
+
+		else:
+			publishTwist(speed, 0)
+			rospy.sleep(0.05)
+
 
 
 
@@ -79,7 +97,13 @@ def driveToPose(goal):
 
 		distance = (xGoal - xPos)**2 + (yGoal - yPos)**2
 
-		linear = max(maxLinSpeed, distance*kp)
+		print MyGlobals.robotPose 
+
+		print 'Distance Away: ', distance
+
+		linear = min(maxLinSpeed, distance*kp)
+
+		print 'Linear Speed ', linear
 		angular =  0
 		publishTwist(linear, angular)
 
@@ -93,10 +117,11 @@ def navToPose(goal, orientMatter):
 
 	print 'Navigating to Position...'
 	print goal
+	print MyGlobals.robotPose
 
 	# robots position
 	xPos = MyGlobals.robotPose.position.x
-	yPos = MyGlobals.robotPose.position.x
+	yPos = MyGlobals.robotPose.position.y
 
 	# goal position
 	xGoal = goal.position.x
@@ -104,10 +129,18 @@ def navToPose(goal, orientMatter):
 
 	# Rotate to correct orientation for straightline movement to goal
 	angle = math.degrees(math.atan2(yGoal - yPos, xGoal - xPos))
+
+	print 'Rotate to: ', angle
 	rotate(angle)
 
-	# Drives the straighline path to the goal
+
 	driveToPose(goal)
+
+	#distance = math.sqrt((xGoal - xPos)**2 + (yGoal - yPos)**2)
+
+	#print 'Drive: ', distance
+
+	#driveStraight(distance)
 
 	# rotates to goal orientation when final orientation matters
 	if orientMatter:
