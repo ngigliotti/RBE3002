@@ -134,13 +134,13 @@ def navToPose(goal, orientMatter):
 	rotate(angle)
 
 
-	driveToPose(goal)
+	#driveToPose(goal)
 
-	#distance = math.sqrt((xGoal - xPos)**2 + (yGoal - yPos)**2)
+	distance = math.sqrt((xGoal - xPos)**2 + (yGoal - yPos)**2)
 
-	#print 'Drive: ', distance
+	print 'Drive: ', distance
 
-	#driveStraight(distance)
+	driveStraight(distance)
 
 	# rotates to goal orientation when final orientation matters
 	if orientMatter:

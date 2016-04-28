@@ -68,9 +68,9 @@ def aStar(start, goal, map):
 
 
 	while queue:
-
-		# Show Explored Cells
-		#showCells(visited, MyGlobals.pubExplored, map)
+		if len(visited) % 100 == 0:
+			# Show Explored Cells
+			showCells(visited, MyGlobals.pubExplored, map)
 
 		node, cost, path = queue.pop(0)
 
@@ -171,7 +171,7 @@ def wayPoints(path, map):
 # goal: Pose object of goal to plan/navigate to
 def pathPlanningNav(goal): 
 
-	goal = goal.pose
+	#goal = goal.pose
 
 	print 'Starting Path Planning...'
 

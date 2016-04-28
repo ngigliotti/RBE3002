@@ -9,7 +9,8 @@ class MyGlobals(object):
 	robotPose = Pose()
 	globalMap = OccupancyGrid()
 	localMap = OccupancyGrid()
-	obstacles = 60
+	mainMap = OccupancyGrid()
+	obstacles = 70
 
 	# Publishers
 	pubExplored = rospy.Publisher("/explore", GridCells, queue_size=1)

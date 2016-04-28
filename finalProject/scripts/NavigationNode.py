@@ -17,7 +17,7 @@ from display import expandObstacles, clearAllDisplay
 import drive
 from pathPlanning import pathPlanningNav
 from settings import MyGlobals
-from roomMapping import mapRoom
+from roomMapping import mapRoom, findNearestFrontier
 
 
 
@@ -31,6 +31,11 @@ def localMapCallback(data):
 def globalMapCallback(data):
 	MyGlobals.globalMap = data
 	expandObstacles(MyGlobals.globalMap, MyGlobals.obstacles)
+
+
+
+def mapCallback(data):
+	MyGlobals.mainMap = data
 
 
 
@@ -103,7 +108,6 @@ def positionCallback(event):
 # Reads the Goal Position After Selecting RViz location
 def readGoal(goal):
 	clearAllDisplay()
-	pathPlanningNav(goal)
 	mapRoom()
 
 
@@ -118,7 +122,7 @@ if __name__ == '__main__':
 	localupdates = rospy.Subscriber('/move_base/local_costmap/costmap_updates', OccupancyGridUpdate, updateLocal, queue_size=1)
 	globalupdates = rospy.Subscriber('/move_base/global_costmap/costmap_updates', OccupancyGridUpdate, updateGlobal, queue_size=1)
 	subGoal = rospy.Subscriber('/rbe/goal', PoseStamped, readGoal, queue_size=1)
-	#mainMap = rospy.Subscriber('/map', OccupancyGrid, mapCallback)
+	mainMap = rospy.Subscriber('/map', OccupancyGrid, mapCallback)
 
 	# timer callback for robot location
 	rospy.Timer(rospy.Duration(.01), positionCallback) 
