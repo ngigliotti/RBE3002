@@ -28,9 +28,10 @@ def findNearestFrontier():
 	width = MyGlobals.mainMap.info.width
 	height = MyGlobals.mainMap.info.height
 	mapData = MyGlobals.mainMap.data
+	robotSize = 2
 
 	# 8 directions of move allowed (includes diagnols)
-	directions = [(1,0), (0,1), (-1, 0), (0,-1)]
+	directions = [(3,0), (0,3), (-3, 0), (0,-3)]
 
 	# Finds Start Node
 	start = convertToCells(MyGlobals.robotPose, MyGlobals.mainMap)
@@ -58,6 +59,20 @@ def findNearestFrontier():
 				return True
 			return False
 
+
+	def frontierLargeEnough(point):
+		directions = [(i, j) for i in range(-robotSize, robotSize+1) for j in range(-robotSize, robotSize+1)]
+		directions.remove((0, 0))	
+		for d in directions:
+			next_node = point
+			next_node.x = point.x + d[0]
+			next_node.y = point.y + d[1]
+
+			if (not isFrontier(next_node)):	
+				return False
+		return True
+
+
 	while queue:
 		# Shows Expansion
 		if len(visited) % 100 == 0:
@@ -67,10 +82,14 @@ def findNearestFrontier():
 		node, cost, path = queue.pop(0)
 
 		if isFrontier(node):
-			print 'Found frontier'
-			print node
-			showCells([node], MyGlobals.pubEnd, MyGlobals.globalMap)
-			return node
+			if frontierLargeEnough(node):
+				print 'Found frontier'
+				print node
+				showCells([node], MyGlobals.pubEnd, MyGlobals.globalMap)
+				return node
+			else:
+				print 'Frontier not large enough'
+				continue
 
 		if node not in visited:
 			visited.append(node)
