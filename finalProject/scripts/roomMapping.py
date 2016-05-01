@@ -1,37 +1,40 @@
 #!/usr/bin/env python
 
-from drive import navToPose
+from drive import navToPose, rotate
 from settings import MyGlobals
 from display import convertToCells, showCells, convertToPose
 from geometry_msgs.msg import Point
 from pathPlanning import pathPlanningNav
+from geometry_msgs.msg import Point
+import math, rospy
+
 
 def mapRoom():
 	mapComplete = False
 	while (not mapComplete):
-		goal = findNearestFrontier()
+		goal = findFurthestFrontier()
 		goal = convertToPose(goal, MyGlobals.globalMap)
 		pathPlanningNav(goal)
 
 		# rotate in a cricle
-		rotate(0)
-		rotate(180)
-		rotate(0)
+		#rotate(0)
+		#rotate(180)
+		#rotate(0)
 
-		mapComplete = checkCompete()
+		mapComplete = checkComlpete()
 
 
 
-def findNearestFrontier():
+def findFurthestFrontier():
 	print 'Looking for frontier...'
 
 	width = MyGlobals.mainMap.info.width
 	height = MyGlobals.mainMap.info.height
 	mapData = MyGlobals.mainMap.data
-	robotSize = 2
+	robotSize = 8
 
 	# 8 directions of move allowed (includes diagnols)
-	directions = [(3,0), (0,3), (-3, 0), (0,-3)]
+	directions = [(1,0), (0,1), (-1, 0), (0,-1)]
 
 	# Finds Start Node
 	start = convertToCells(MyGlobals.robotPose, MyGlobals.mainMap)
@@ -41,6 +44,7 @@ def findNearestFrontier():
 	visited = []
 	queue = [(start, 0, [])]
 	current = 0
+	frontiers = []
 
 	# point: Point object of the current position
 	def isWall(point):
@@ -51,6 +55,8 @@ def findNearestFrontier():
 				return True
 			return False
 
+
+
 	def isFrontier(node):
 		index = node.y*width + node.x
 		if index < width*height:
@@ -60,17 +66,72 @@ def findNearestFrontier():
 			return False
 
 
+
+	def isExplored(node):
+		index = node.y*width + node.x
+		if index < width*height:
+			value = mapData[index]
+			if value == 0:
+				return True
+			return False
+
+
+
+	def findFurthestFrontier(list):
+		distance = 0
+		node = Point()
+		currentCell = convertToCells(MyGlobals.robotPose, MyGlobals.globalMap)
+		for n in list:
+			dist = math.sqrt((n.x - currentCell.x)**2 + (n.y - currentCell.y)**2)
+			if (dist > distance):
+				distance = dist
+				node = n
+
+		return node
+
+
+
 	def frontierLargeEnough(point):
-		directions = [(i, j) for i in range(-robotSize, robotSize+1) for j in range(-robotSize, robotSize+1)]
+		directions = [(i, j) for i in range(-(robotSize/2), (robotSize/2) + 1) for j in range(-(robotSize/2), (robotSize/2) + 1)]
 		directions.remove((0, 0))	
 		for d in directions:
 			next_node = point
 			next_node.x = point.x + d[0]
 			next_node.y = point.y + d[1]
 
-			if (not isFrontier(next_node)):	
+			if (not isExplored(next_node)):	
 				return False
 		return True
+
+
+	def frontierValid(point):
+		directions = [(i, j) for i in range(-1, 2) for j in range(-1, 2)]
+		directions.remove((0, 0))
+
+		for d in directions:
+			node = Point()
+			node.x = point.x + d[0]
+			node.y = point.y + d[1]
+
+			if (isExplored(node)):
+				i = 0
+				while (i <= (robotSize/2)):
+					node.x += d[0]
+					node.y += d[1]
+
+					i += 1
+
+					if (not isExplored(node)):
+						continue
+				
+				return [node]
+
+
+			else:
+				continue
+
+			return []
+
 
 
 	while queue:
@@ -82,13 +143,19 @@ def findNearestFrontier():
 		node, cost, path = queue.pop(0)
 
 		if isFrontier(node):
-			if frontierLargeEnough(node):
-				print 'Found frontier'
-				print node
-				showCells([node], MyGlobals.pubEnd, MyGlobals.globalMap)
-				return node
+			if frontierValid(node):
+				node = frontierValid(node)[0]
+				if frontierLargeEnough(node):
+					print 'Found frontier'
+					print node
+					frontiers.append(node)
+					showCells(frontiers, MyGlobals.pubStart, MyGlobals.globalMap)
+					rospy.sleep(0.1)
+				else:
+					print 'Frontier not large enough'
+					continue
 			else:
-				print 'Frontier not large enough'
+				print 'Frontier not valid'
 				continue
 
 		if node not in visited:
@@ -128,13 +195,13 @@ def findNearestFrontier():
 					queue[i] = next_item
 				visited.append(next_node)
 
+	# Nothing left to search
+	frontier = findFurthestFrontier(frontiers)
+	print frontiers
+	return frontier
+
 
 
 
 def checkComplete():
-	return True
-
-
-
-
-
+	return True3

@@ -17,7 +17,7 @@ from display import expandObstacles, clearAllDisplay
 import drive
 from pathPlanning import pathPlanningNav
 from settings import MyGlobals
-from roomMapping import mapRoom, findNearestFrontier
+from roomMapping import mapRoom
 
 
 
