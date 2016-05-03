@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 from drive import navToPose, rotate
 from settings import MyGlobals
 from display import convertToCells, showCells, convertToPose
@@ -11,17 +12,22 @@ import math, rospy
 
 def mapRoom():
 	mapComplete = False
+	# rotate in a cricle
+	rotate(30)
+	rotate(-30)
+	rotate(0)
+	
+
+	rospy.sleep(10)
+
 	while (not mapComplete):
 		goal = findFurthestFrontier()
+		if (goal.x<=0 and goal.y<=0):
+			mapComplete = True
 		goal = convertToPose(goal, MyGlobals.globalMap)
 		pathPlanningNav(goal)
-
-		# rotate in a cricle
-		#rotate(0)
-		#rotate(180)
-		#rotate(0)
-
-		mapComplete = checkComlpete()
+	print 'Im Done'
+	os.system("spd-say \"I am Done\"")
 
 
 
@@ -58,7 +64,7 @@ def findFurthestFrontier():
 
 
 	def isFrontier(node):
-		index = node.y*width + node.x
+		index = (node.y-1)*width + node.x
 		if index < width*height:
 			value = mapData[index]
 			if value == -1:
@@ -68,7 +74,7 @@ def findFurthestFrontier():
 
 
 	def isExplored(node):
-		index = node.y*width + node.x
+		index = (node.y-1)*width + node.x
 		if index < width*height:
 			value = mapData[index]
 			if value == 0:
@@ -77,7 +83,7 @@ def findFurthestFrontier():
 
 
 
-	def findFurthestFrontier(list):
+	def findFurthest(list):
 		distance = 0
 		node = Point()
 		currentCell = convertToCells(MyGlobals.robotPose, MyGlobals.globalMap)
@@ -90,12 +96,25 @@ def findFurthestFrontier():
 		return node
 
 
+	def frontierExpansion(node):
+		for d in directions:
+			pointTemp = Point()
+			pointTemp.x = node.x + 9*d[0]
+			pointTemp.y = node.y + 9*d[1]
+			if frontierLargeEnough(pointTemp):
+				return [pointTemp]
+			else:
+				continue
+		return []
+
+
+
 
 	def frontierLargeEnough(point):
 		directions = [(i, j) for i in range(-(robotSize/2), (robotSize/2) + 1) for j in range(-(robotSize/2), (robotSize/2) + 1)]
 		directions.remove((0, 0))	
 		for d in directions:
-			next_node = point
+			next_node = Point()
 			next_node.x = point.x + d[0]
 			next_node.y = point.y + d[1]
 
@@ -103,35 +122,15 @@ def findFurthestFrontier():
 				return False
 		return True
 
-
-	def frontierValid(point):
-		directions = [(i, j) for i in range(-1, 2) for j in range(-1, 2)]
-		directions.remove((0, 0))
-
+	if (not isExplored(start)):
 		for d in directions:
-			node = Point()
-			node.x = point.x + d[0]
-			node.y = point.y + d[1]
-
-			if (isExplored(node)):
-				i = 0
-				while (i <= (robotSize/2)):
-					node.x += d[0]
-					node.y += d[1]
-
-					i += 1
-
-					if (not isExplored(node)):
-						continue
-				
-				return [node]
-
-
-			else:
-				continue
-
-			return []
-
+			newStart = Point()
+			newStart.x = start.x + d[0]
+			newStart.y = start.y + d[1]
+			if isExplored(newStart):
+				start = newStart
+				showCells([start], MyGlobals.pubStart, MyGlobals.globalMap)
+				break
 
 
 	while queue:
@@ -143,20 +142,13 @@ def findFurthestFrontier():
 		node, cost, path = queue.pop(0)
 
 		if isFrontier(node):
-			if frontierValid(node):
-				node = frontierValid(node)[0]
-				if frontierLargeEnough(node):
-					print 'Found frontier'
-					print node
-					frontiers.append(node)
-					showCells(frontiers, MyGlobals.pubStart, MyGlobals.globalMap)
-					rospy.sleep(0.1)
-				else:
-					print 'Frontier not large enough'
-					continue
-			else:
-				print 'Frontier not valid'
-				continue
+			# Sets a new node that the robot can navigate to
+			newNode = frontierExpansion(node)
+			if newNode:
+				print 'Found frontier'
+				frontiers.append(newNode[0])
+				showCells(frontiers, MyGlobals.pubEnd, MyGlobals.globalMap)
+			continue
 
 		if node not in visited:
 			visited.append(node)
@@ -195,13 +187,11 @@ def findFurthestFrontier():
 					queue[i] = next_item
 				visited.append(next_node)
 
+
 	# Nothing left to search
-	frontier = findFurthestFrontier(frontiers)
-	print frontiers
+	frontier = findFurthest(frontiers)
+	showCells([frontier], MyGlobals.pubEnd, MyGlobals.globalMap)
+
+	print 'Waiting...'
+	rospy.sleep(10)
 	return frontier
-
-
-
-
-def checkComplete():
-	return True3

@@ -19,6 +19,7 @@ def aStar(start, goal, map):
 	width = map.info.width
 	height = map.info.height
 	mapData = map.data
+	obstacles = MyGlobals.obstacles
 
 	# Converts to Local Map if needed
 	if map == MyGlobals.localMap:
@@ -27,6 +28,7 @@ def aStar(start, goal, map):
 
 	start = convertToCells(start, map)
 	goal = convertToCells(goal, map)
+
 
 	visited = []
 	queue = [(start, 0, [])]
@@ -40,12 +42,17 @@ def aStar(start, goal, map):
 
 	# point: Point object of the current position
 	def isWall(point):
-		index = point.y*width + point.x
+		if lookupValue(point) > obstacles:
+			return True
+		return False
+
+
+
+	def lookupValue(point):
+		index = (point.y-1)*width + point.x
 		if index < width*height:
 			value = mapData[index]
-			if value >= MyGlobals.obstacles:
-				return True
-			return False
+		return value
 
 
 
@@ -53,6 +60,15 @@ def aStar(start, goal, map):
 	# goal: Point object of the goal position
 	def hueristic(point, goal):
 		return math.sqrt((goal.x - point.x)**2 + (goal.y - point.y)**2)
+
+
+
+	if isWall(start) or isWall(goal):
+		print 'Changing Obstacles'
+		obstacles = max(lookupValue(start), lookupValue(goal))
+		print max(lookupValue(start), lookupValue(goal))
+		print lookupValue(goal)
+		print obstacles
 
 
 
@@ -90,10 +106,6 @@ def aStar(start, goal, map):
 
 		if node not in visited:
 			visited.append(node)
-
-		if isWall(node):
-			print 'Encountered a wall. Darn'
-			continue
 
 		# Expand neighboring nodes in the list
 		for d in directions:
@@ -185,7 +197,6 @@ def pathPlanningNav(goal):
 		firstTime = False
 
 		print 'Global Map Path Planning...'
-
 		# Calculates overall path on the global map
 		globalPath = aStar(MyGlobals.robotPose, goal, MyGlobals.globalMap)
 		globalWaypoints = wayPoints(globalPath, MyGlobals.globalMap)
@@ -201,13 +212,15 @@ def pathPlanningNav(goal):
 
 		# Calculates path to first waypoint of overall path
 		localPath = aStar(MyGlobals.robotPose, newGoal, MyGlobals.localMap)
-		localWaypoints = wayPoints(localPath, MyGlobals.localMap)
-		firstLocalWaypoint = localWaypoints[0]
-		localGoal = convertToPose(firstLocalWaypoint, MyGlobals.localMap)
-		localGoal.position = transformToGlobal(localGoal.position)
+		if (localPath):
+			localWaypoints = wayPoints(localPath, MyGlobals.localMap)
+			firstLocalWaypoint = localWaypoints[0]
+			localGoal = convertToPose(firstLocalWaypoint, MyGlobals.localMap)
+			localGoal.position = transformToGlobal(localGoal.position)
+			newGoal = localGoal
 
 		# Navigates to first waypoint in the local path
-		navToPose(localGoal, False)
+		navToPose(newGoal, False)
 
 	# Navigates to the final position anf orientation
 	navToPose(goal, True)

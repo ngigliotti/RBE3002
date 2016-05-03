@@ -49,6 +49,8 @@ def rotate(angle):
 	vel.angular.z = 0.0
 	MyGlobals.pubMotion.publish(vel)
 
+	rospy.sleep(2)
+
 
 
 #This function accepts a speed and a distance for the robot to move in a straight line
