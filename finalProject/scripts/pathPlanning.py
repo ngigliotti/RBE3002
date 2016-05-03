@@ -52,7 +52,9 @@ def aStar(start, goal, map):
 		index = (point.y-1)*width + point.x
 		if index < width*height:
 			value = mapData[index]
-		return value
+			return value
+		else:
+			return -1
 
 
 
@@ -208,16 +210,16 @@ def pathPlanningNav(goal):
 
 		print 'New Goal: ', newGoal
 
-		print 'Local Map Path Planning...'
+		#print 'Local Map Path Planning...'
 
 		# Calculates path to first waypoint of overall path
-		localPath = aStar(MyGlobals.robotPose, newGoal, MyGlobals.localMap)
-		if (localPath):
-			localWaypoints = wayPoints(localPath, MyGlobals.localMap)
-			firstLocalWaypoint = localWaypoints[0]
-			localGoal = convertToPose(firstLocalWaypoint, MyGlobals.localMap)
-			localGoal.position = transformToGlobal(localGoal.position)
-			newGoal = localGoal
+		#localPath = aStar(MyGlobals.robotPose, newGoal, MyGlobals.localMap)
+		#if (localPath):
+		#	localWaypoints = wayPoints(localPath, MyGlobals.localMap)
+		#	firstLocalWaypoint = localWaypoints[0]
+		#	localGoal = convertToPose(firstLocalWaypoint, MyGlobals.localMap)
+		#	localGoal.position = transformToGlobal(localGoal.position)
+		#	newGoal = localGoal
 
 		# Navigates to first waypoint in the local path
 		navToPose(newGoal, False)

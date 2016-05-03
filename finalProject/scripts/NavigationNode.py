@@ -47,6 +47,7 @@ def updateLocal(data):
 
 # Updates the Global Map
 def updateGlobal(data):
+	#print 'Updating Global Map...'
 	updateMap(data, MyGlobals.globalMap)
 	expandObstacles(MyGlobals.globalMap, MyGlobals.obstacles)
 
@@ -73,6 +74,8 @@ def updateMap(data, map):
 			index_u += 1
 			index += 1
 		index += w_m - w_u
+
+	map.data = mapData
 
 
 

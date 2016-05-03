@@ -10,7 +10,7 @@ class MyGlobals(object):
 	globalMap = OccupancyGrid()
 	localMap = OccupancyGrid()
 	mainMap = OccupancyGrid()
-	obstacles = 70
+	obstacles = 55
 
 	# Publishers
 	pubExplored = rospy.Publisher("/explore", GridCells, queue_size=1)

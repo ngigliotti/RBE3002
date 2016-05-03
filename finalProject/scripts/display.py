@@ -62,7 +62,7 @@ def convertToCells(pose, map):
 
 # map: OccupancyGrid object of the map to calculate obstacles for
 # expansionValue: float of value which determines obstacle
-def expandObstacles(map, exansionValue):
+def expandObstacles(map, expansionValue):
 
 	data = map.data
 	width = map.info.width
@@ -71,7 +71,7 @@ def expandObstacles(map, exansionValue):
 	obstacles = [] 
 
 	for value in data:
-		if value >= exansionValue:
+		if value >= expansionValue:
 			point = Point()
 			point.x = index % width
 			point.y = math.floor(index/width)

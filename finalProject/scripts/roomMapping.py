@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-from drive import navToPose, rotate
+from drive import navToPose, rotate, driveStraight
 from settings import MyGlobals
 from display import convertToCells, showCells, convertToPose
 from geometry_msgs.msg import Point
@@ -18,26 +18,45 @@ def mapRoom():
 	rotate(0)
 	
 
-	rospy.sleep(10)
+	rospy.sleep(5)
 
 	while (not mapComplete):
-		goal = findFurthestFrontier()
-		if (goal.x<=0 and goal.y<=0):
+		listOfFrontiers = findFrontiers()
+		goal = findFurthest(listOfFrontiers)
+		showCells([goal], MyGlobals.pubEnd, MyGlobals.globalMap)
+		print goal
+		print '# of Frontiers: ', len(listOfFrontiers)
+		if (len(listOfFrontiers) <= 2):
+			print 'Finished'
 			mapComplete = True
+			break
 		goal = convertToPose(goal, MyGlobals.globalMap)
 		pathPlanningNav(goal)
 	print 'Im Done'
 	os.system("spd-say \"I am Done\"")
 
 
+def findFurthest(list):
+	distance = 0
+	node = Point()
+	currentCell = convertToCells(MyGlobals.robotPose, MyGlobals.globalMap)
+	for n in list:
+		dist = math.sqrt((n.x - currentCell.x)**2 + (n.y - currentCell.y)**2)
+		if (dist > distance):
+			distance = dist
+			node = n
 
-def findFurthestFrontier():
+	return node
+
+
+
+def findFrontiers():
 	print 'Looking for frontier...'
 
 	width = MyGlobals.mainMap.info.width
 	height = MyGlobals.mainMap.info.height
 	mapData = MyGlobals.mainMap.data
-	robotSize = 8
+	robotSize = 11
 
 	# 8 directions of move allowed (includes diagnols)
 	directions = [(1,0), (0,1), (-1, 0), (0,-1)]
@@ -83,19 +102,6 @@ def findFurthestFrontier():
 
 
 
-	def findFurthest(list):
-		distance = 0
-		node = Point()
-		currentCell = convertToCells(MyGlobals.robotPose, MyGlobals.globalMap)
-		for n in list:
-			dist = math.sqrt((n.x - currentCell.x)**2 + (n.y - currentCell.y)**2)
-			if (dist > distance):
-				distance = dist
-				node = n
-
-		return node
-
-
 	def frontierExpansion(node):
 		for d in directions:
 			pointTemp = Point()
@@ -123,14 +129,9 @@ def findFurthestFrontier():
 		return True
 
 	if (not isExplored(start)):
-		for d in directions:
-			newStart = Point()
-			newStart.x = start.x + d[0]
-			newStart.y = start.y + d[1]
-			if isExplored(newStart):
-				start = newStart
-				showCells([start], MyGlobals.pubStart, MyGlobals.globalMap)
-				break
+		print 'Not in an Explored Cell'
+		driveStraight(0.1)
+		findFrontiers()
 
 
 	while queue:
@@ -189,9 +190,5 @@ def findFurthestFrontier():
 
 
 	# Nothing left to search
-	frontier = findFurthest(frontiers)
-	showCells([frontier], MyGlobals.pubEnd, MyGlobals.globalMap)
-
-	print 'Waiting...'
-	rospy.sleep(10)
-	return frontier
+	showCells([], MyGlobals.pubExplored, MyGlobals.globalMap)
+	return frontiers
